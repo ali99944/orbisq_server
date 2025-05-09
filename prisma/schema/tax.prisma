@@ -1,0 +1,24 @@
+model taxes {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?   // NEW: For tax description/details
+  tax_rate    Float
+  is_active   Boolean   @default(true)
+  tax_type    tax_type  @default(sales) // NEW: sales, vat, gst, etc.
+  country     String?   // NEW: For country-specific taxes
+  state       String?   // NEW: For state-specific taxes
+  is_compound Boolean   @default(false) // NEW: For compound taxes
+  is_default  Boolean   @default(false) // NEW: Mark default tax
+
+  products    products[]
+
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+}
+
+enum tax_type {
+  sales
+  vat
+  gst
+  service
+}

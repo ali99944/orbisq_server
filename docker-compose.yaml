@@ -1,0 +1,35 @@
+version: '3'
+
+services:
+  db:
+    image: postgres
+    volumes:
+      - db-data:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: mydb
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+
+  server:
+    build: ./server
+    depends_on:
+      - db
+      - redis
+    ports:
+      - "3001:3001"
+
+  web:
+    build: ./web
+    depends_on:
+      - server
+    ports:
+      - "3000:3000"
+
+volumes:
+  db-data:

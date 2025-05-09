@@ -1,0 +1,196 @@
+model shops {
+    id              Int            @id @default(autoincrement())
+    name            String
+    slug            String         @unique
+    logo            String?        @db.VarChar(255)
+    cover           String?        @db.VarChar(255)
+    description     String?
+    address         addresses?
+    address_id      Int?           @unique
+    contact_info    contact_infos?
+    contact_info_id Int?           @unique
+    social_links    social_links?  @relation(fields: [social_links_id], references: [id])
+    social_links_id Int?           @unique
+    currency_info   currency_infos @relation(fields: [currency_info_id], references: [id])
+    currency_info_id Int           @unique
+    business_info   business_infos @relation(fields: [business_info_id], references: [id])
+    business_info_id Int           @unique
+    shop_theme   shop_theme @relation(fields: [shop_theme_id], references: [id])
+    shop_theme_id Int           @unique
+    status          shop_status    @default(active)
+    orders_count    Int            @default(0)
+    views_count     Int            @default(0)
+
+    // NEW: Analytics
+    last_sale_at   DateTime?         // NEW: Track last sale timestamp
+    
+    // product_categories product_categories[]
+    // products          products[]
+    // discounts         discounts[]
+    
+    // NEW: Shop settings and metadata
+    opening_hours   Json?          // NEW: Store opening hours as JSON
+    timezone        String         @default("Africa/Cairo") // NEW
+    language        String         @default("ar-EG")        // NEW
+    rating          Float?         @default(0.0)           // NEW: Average rating
+    review_count    Int            @default(0)             // NEW: Total reviews
+    
+    // NEW: Payment and fulfillment
+    payment_methods String[]       // NEW: Supported payment methods
+    fulfillment_types String[]     // NEW: Delivery, pickup, dine-in etc.
+
+    
+    created_at      DateTime       @default(now())
+    updated_at      DateTime       @updatedAt
+
+    desks desks[]
+
+    orders orders[]
+
+    gift_cards gift_cards[]
+
+    branches branches[]
+
+    coupons coupons[]
+    categories product_categories[]
+    products products[]
+    discounts discounts[]
+}
+
+model addresses {
+    id           Int      @id @default(autoincrement())
+    street       String?
+    city         String?
+    state        String?
+    country      String?   @default("Egypt") // NEW
+    postal_code  String?
+    latitude     Float?    // NEW: For maps
+    longitude    Float?    // NEW: For maps
+    is_primary   Boolean   @default(true)    // NEW
+    notes        String?   // NEW: Delivery instructions
+    
+    shop         shops?    @relation(fields: [shop_id], references: [id])
+    shop_id      Int?      @unique
+    
+    created_at   DateTime  @default(now())
+    updated_at   DateTime  @updatedAt
+
+    branches branches[]
+}
+
+model contact_infos {
+    id           Int      @id @default(autoincrement())
+    phone        String?
+    mobile       String?   // NEW: Separate mobile number
+    email        String?
+    website      String?   // NEW
+    support_email String?  // NEW: Dedicated support contact
+    
+    // NEW: Social media quick access
+    whatsapp     String?
+    telegram     String?
+    
+    shop         shops?    @relation(fields: [shop_id], references: [id])
+    shop_id      Int?      @unique
+    
+    created_at   DateTime  @default(now())
+    updated_at   DateTime  @updatedAt
+
+    // branches branches[]
+}
+
+model social_links {
+    id             Int      @id @default(autoincrement())
+    facebook       String?
+    twitter        String?
+    instagram      String?
+    linkedin       String?
+    whatsapp       String?
+    telegram       String?
+    snapchat       String?
+    youtube        String?
+    tiktok         String?   // NEW
+    pinterest      String?   // NEW
+    
+    // NEW: Social media metrics
+    follower_count Int?      // NEW: Track social presence
+    
+    shop           shops?
+    
+    created_at     DateTime  @default(now())
+    updated_at     DateTime  @updatedAt
+}
+
+model currency_infos {
+    id               Int      @id @default(autoincrement())
+    currency         String   @default("LE")
+    currency_symbol  String   @default("L.E")
+    currency_code    String   @default("EGP")
+    decimal_places   Int      @default(2)      // NEW
+    exchange_rate    Float?   @default(1.0)    // NEW: For multi-currency support
+    is_default       Boolean  @default(true)   // NEW
+    
+    shop             shops?
+    
+    created_at       DateTime @default(now())
+    updated_at       DateTime @updatedAt
+}
+
+model business_infos {
+    id                    Int       @id @default(autoincrement())
+    has_delivery          Boolean   @default(false)
+    has_takeaway          Boolean   @default(false)
+    has_reservation       Boolean   @default(false)
+    has_dine_in           Boolean   @default(false)  // NEW
+    has_through_drive           Boolean   @default(false)  // NEW
+    delivery_cost         Float     @default(0)
+    minimum_order         Float?    // NEW: Minimum order amount
+    delivery_radius       Float?    // NEW: In kilometers
+    preparation_time      Int?      // NEW: Average preparation time in minutes
+    
+    vat_rate             Float     @default(0)
+    vat_type             vat_type  @default(inclusive)
+    vat_number           String?
+    vat_certificate_url  String?
+    commercial_license   String?   // NEW: License number
+    license_url          String?   // NEW: License document URL
+    
+    // NEW: Business hours
+    opening_time         String?   // NEW: "09:00"
+    closing_time         String?   // NEW: "23:00"
+    
+    shop                 shops?
+    
+    created_at           DateTime  @default(now())
+    updated_at           DateTime  @updatedAt
+}
+
+model shop_theme {
+    id           Int      @id @default(autoincrement())
+    primary_color      String
+    secondary_color       String   // NEW: Separate mobile number
+    accent_color        String
+    text_color      String   // NEW
+    background_color      String?   // NEW
+    background_image      String?   // NEW
+    
+    shop         shops?
+    shop_id      Int?      @unique
+    
+    created_at   DateTime  @default(now())
+    updated_at   DateTime  @updatedAt
+
+}
+
+enum vat_type {
+    inclusive
+    exclusive
+}
+
+enum shop_status {
+    active
+    inactive
+    pending_approval
+    suspended       
+    on_break        
+}

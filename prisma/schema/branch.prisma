@@ -1,0 +1,349 @@
+model branches {
+  id              Int             @id @default(autoincrement())
+  name            String
+  code            String          @unique  // Short branch code like "NYC-01"
+  slug            String          @unique  // URL-friendly identifier
+  is_main         Boolean         @default(false)
+  status          branch_status   @default(active)
+  opening_date    DateTime?
+  timezone        String          @default("UTC")
+  locale          String          @default("en-US")
+  tax_id_number   String?         // Branch-specific tax identifier
+  manager_id      Int?            // Branch manager
+
+  // Contact Information
+  contact_person  String?
+  contact_email   String?
+  contact_phone   String?
+
+  // Operational Settings
+  accepts_reservations Boolean    @default(true)
+  accepts_walkins  Boolean        @default(true)
+  has_delivery    Boolean         @default(false)
+  has_pickup      Boolean         @default(true)
+  has_dine_in     Boolean         @default(true)
+  
+  // Location Details
+  geo_latitude    Float?
+  geo_longitude   Float?
+  map_link        String?
+  
+  // Statistics
+  total_capacity  Int?            // Total seating capacity
+  current_occupancy Int           @default(0)
+  monthly_sales   Float           @default(0)
+  average_rating  Float?          @default(0.0)
+
+  // Relations
+  shop_id         Int
+  shop            shops           @relation(fields: [shop_id], references: [id])
+  address_id      Int?
+  address         addresses?      @relation(fields: [address_id], references: [id])
+//   manager         users?          @relation(fields: [manager_id], references: [id])
+  operating_hours branch_operating_hours[]
+  menus           branch_menus[]
+  staff           branch_staff[]
+  desks          desks[]
+  terminals       pos_terminals[]
+  inventory       branch_inventory[]
+
+
+  coupons coupons[]
+  coupon_redemptions coupon_redemptions[]
+  gift_cards gift_cards[]
+
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+}
+
+model branch_operating_hours {
+  id              Int             @id @default(autoincrement())
+  branch_id       Int
+  day_of_week     day_of_week     // 0=Sunday, 1=Monday, etc.
+  opening_time    String?         // "09:00" format
+  closing_time    String?
+  is_closed       Boolean         @default(false)
+  special_note    String?         // "Closed for renovation"
+
+  // Relations
+  branch          branches        @relation(fields: [branch_id], references: [id])
+
+  @@unique([branch_id, day_of_week])
+}
+
+model branch_menus {
+  id              Int             @id @default(autoincrement())
+  branch_id       Int
+  menu_id         Int
+  is_active       Boolean         @default(true)
+  available_from  DateTime?
+  available_to    DateTime?
+
+  // Relations
+  branch          branches        @relation(fields: [branch_id], references: [id])
+//   menu            menus           @relation(fields: [menu_id], references: [id])
+
+  @@unique([branch_id, menu_id])
+}
+
+model branch_staff {
+  id              Int             @id @default(autoincrement())
+  branch_id       Int
+  user_id         Int
+  position        String?         // "Head Chef", "Manager", etc.
+  is_active       Boolean         @default(true)
+  joined_at       DateTime        @default(now())
+  left_at         DateTime?
+
+  // Relations
+  branch          branches        @relation(fields: [branch_id], references: [id])
+//   user            users           @relation(fields: [user_id], references: [id])
+
+  @@unique([branch_id, user_id])
+}
+
+model pos_terminals {
+  id              Int             @id @default(autoincrement())
+  branch_id       Int
+  name            String          // "Bar Terminal", "Kitchen Printer", etc.
+  device_id       String          // Hardware identifier
+  type            terminal_type   @default(cash_register)
+  is_active       Boolean         @default(true)
+  last_active_at  DateTime?
+
+  // Relations
+  branch          branches        @relation(fields: [branch_id], references: [id])
+
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+}
+
+model branch_inventory {
+  id              Int             @id @default(autoincrement())
+  branch_id       Int
+  product_id      Int?
+  ingredient_id   Int?
+  current_stock   Float           @default(0)
+  low_stock_threshold Float?      @default(5)
+  last_updated_at DateTime        @default(now())
+  last_updated_by Int?            // User who made last update
+
+  // Relations
+  branch          branches        @relation(fields: [branch_id], references: [id])
+//   product         products?       @relation(fields: [product_id], references: [id])
+  ingredient      ingredients?    @relation(fields: [ingredient_id], references: [id])
+
+  @@unique([branch_id, product_id, ingredient_id])
+}
+
+// Supporting enums
+enum branch_status {
+  active
+  inactive
+  opening_soon
+  closed_temporary
+  closed_permanent
+  under_renovation
+}
+
+enum terminal_type {
+  cash_register
+  kitchen_printer
+  handheld
+  self_service
+  mobile
+}
+
+enum day_of_week {
+  sunday
+  monday
+  tuesday
+  wednesday
+  thursday
+  friday
+  saturday
+}
+
+
+model ingredients {
+  id                Int             @id @default(autoincrement())
+  name              String
+  description       String?
+  code              String          @unique  // SKU or internal code
+  barcode           String?         @unique  // For scanning
+  category_id       Int?
+  unit_of_measure   UnitOfMeasure   @default(grams)
+  cost_per_unit     Float           @default(0)
+  current_stock     Float           @default(0)
+  low_stock_alert   Float?          @default(10)
+  shelf_life_days   Int?            // Expiration tracking
+  is_active         Boolean         @default(true)
+  is_consumable     Boolean         @default(true)  // False for non-food items
+  is_allergen       Boolean         @default(false)
+  allergen_type     AllergenType?   // If is_allergen=true
+  
+  // Supplier Information
+  supplier_id       Int?
+  supplier_code     String?         // Supplier's product code
+  minimum_order     Float?          // Minimum purchase quantity
+  lead_time_days    Int?            // Delivery lead time
+  
+  // Nutrition Information (per 100g/ml)
+  calories          Float?          @default(0)
+  protein           Float?          @default(0)
+  carbohydrates     Float?          @default(0)
+  fat               Float?          @default(0)
+  
+  // Relations
+  category          ingredient_categories? @relation(fields: [category_id], references: [id])
+  supplier          suppliers?      @relation(fields: [supplier_id], references: [id])
+  branch_inventory  branch_inventory[]
+  product_ingredients product_ingredients[]
+  recipe_steps     recipe_step_ingredients[]
+  
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+}
+
+model ingredient_categories {
+  id                Int             @id @default(autoincrement())
+  name              String
+  description       String?
+  parent_id         Int?            // For hierarchical categories
+  sort_order        Int             @default(0)
+  
+  // Relations
+//   parent            ingredient_categories? @relation(fields: [parent_id], references: [id])
+  ingredients       ingredients[]
+//   children          ingredient_categories[] @relation("ingredient_category_children")
+  
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+}
+
+model suppliers {
+  id                Int             @id @default(autoincrement())
+  name              String
+  contact_person    String?
+  email             String?
+  phone             String?
+  address           String?
+  payment_terms     String?         // "Net 30", "COD", etc.
+  is_active         Boolean         @default(true)
+  notes             String?
+  
+  // Relations
+  ingredients       ingredients[]
+  
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+}
+
+model product_ingredients {
+  id                Int             @id @default(autoincrement())
+  product_id        Int
+  ingredient_id     Int
+  quantity          Float           @default(1)
+  unit_of_measure   UnitOfMeasure   @default(grams)
+  is_primary        Boolean         @default(false)  // Main components vs garnishes
+  notes             String?         // "Finely chopped", etc.
+  
+  // Relations
+//   product           products        @relation(fields: [product_id], references: [id])
+  ingredient        ingredients     @relation(fields: [ingredient_id], references: [id])
+  
+  @@unique([product_id, ingredient_id])
+}
+
+model recipe_step_ingredients {
+  id                Int             @id @default(autoincrement())
+  recipe_step_id    Int
+  ingredient_id     Int
+  quantity          Float           @default(1)
+  unit_of_measure   UnitOfMeasure   @default(grams)
+  preparation_notes String?         // "Diced", "Room temperature", etc.
+  
+  // Relations
+  recipe_step       recipe_steps    @relation(fields: [recipe_step_id], references: [id])
+  ingredient        ingredients     @relation(fields: [ingredient_id], references: [id])
+  
+  created_at        DateTime        @default(now())
+}
+
+// Supporting Enums
+enum UnitOfMeasure {
+  grams
+  kilograms
+  milliliters
+  liters
+  pieces
+  ounces
+  pounds
+  cups
+  tablespoons
+  teaspoons
+  gallons
+}
+
+enum AllergenType {
+  gluten
+  dairy
+  nuts
+  peanuts
+  soy
+  eggs
+  fish
+  shellfish
+  sesame
+  mustard
+  celery
+  lupin
+  molluscs
+  sulphur_dioxide
+}
+
+model recipe_steps {
+  id                Int             @id @default(autoincrement())
+  product_id        Int             // The dish being prepared
+  step_number       Int             // Sequential order (1, 2, 3...)
+  title             String          // "Prep Vegetables", "Cook Sauce"
+  instructions      String          // Detailed instructions
+  estimated_time    Int?            // In minutes
+  is_critical       Boolean         @default(false) // Must complete for recipe success
+  image_url         String?         // Step visualization
+  video_url         String?         // Video demonstration
+  notes             String?         // Chef's tips
+  
+  // Equipment Requirements
+  required_tools    String[]        // ["knife", "blender"]
+  required_station  String?         // "grill", "fryer", "cold station"
+  
+  // Timing Information
+  can_prep_ahead    Boolean         @default(false)
+  prep_ahead_instructions String?   // How to store prepped items
+  hold_time         Int?            // How long step can be held (minutes)
+  
+  // Relations
+//   product           products        @relation(fields: [product_id], references: [id])
+  ingredients       recipe_step_ingredients[]
+  variations        recipe_step_variations[]
+  
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+  
+  @@unique([product_id, step_number]) // Ensure step ordering per product
+}
+
+model recipe_step_variations {
+  id                Int             @id @default(autoincrement())
+  step_id           Int
+  name              String          // "Spicy Version", "Vegetarian Option"
+  instructions      String          // Modified instructions
+  substitute_ingredients Json?      // Alternative ingredients
+  
+  // Relations
+  recipe_step       recipe_steps    @relation(fields: [step_id], references: [id])
+  
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+}

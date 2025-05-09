@@ -1,0 +1,175 @@
+model desks {
+  id               Int       @id @default(autoincrement())
+  desk_number      Int       @unique
+  number_of_seats  Int       @default(2)
+  qrcode           String    @unique
+  name             String?   // NEW: Custom name like "Window View", "VIP Booth"
+  
+  // Location and section info
+  section          String?   @default("main") // NEW: "terrace", "smoking", "private"
+  floor            Int?      @default(1)      // NEW: For multi-floor establishments
+  position_x       Float?    // NEW: For floor plan mapping
+  position_y       Float?    // NEW: For floor plan mapping
+  
+  // Status control
+  status           desk_status @default(free)
+  reservation_time DateTime?  // NEW: When desk was reserved
+  occupation_time  DateTime?  // NEW: When desk was occupied
+  
+  // Customer relationship
+  customer_id      Int?
+  // customer         customers? @relation(fields: [customer_id], references: [id])
+  
+  // Discount relationship
+  discount_id      Int?
+  discount         discounts? @relation(fields: [discount_id], references: [id])
+  
+  // NEW: Service information
+  minimum_spend    Float?    // NEW: Minimum spend requirement for VIP desks
+  has_outlets      Boolean   @default(false) // NEW: Power outlets available
+  has_view         Boolean   @default(false) // NEW: Special view
+  is_wheelchair_accessible Boolean @default(true)
+  
+  // current_order    orders?
+  
+  shop_id          Int?
+  shop             shops?    @relation(fields: [shop_id], references: [id])
+  
+  // NEW: Maintenance flags
+  needs_cleaning   Boolean   @default(false)
+  is_under_maintenance Boolean @default(false)
+  maintenance_notes String?
+
+  branch_id Int
+  branch branches @relation(fields: [branch_id], references: [id])
+  
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  // users users[] @relation("assigned_desks")
+  orders orders[]
+}
+
+
+
+enum desk_status {
+  free
+  occupied
+  reserved
+  cleaning // NEW
+  out_of_service // NEW
+}
+
+
+model coupons {
+  id              Int             @id @default(autoincrement())
+  code            String          @unique
+  description     String?
+  discount_type   discount_type   @default(percentage)
+  discount_value  Decimal           @db.Decimal(10, 2)
+  min_order_amount Decimal?         @db.Decimal(10, 2)
+  max_discount    Decimal?          @db.Decimal(10, 2)
+  start_date      DateTime
+  end_date        DateTime
+  is_active       Boolean         @default(true)
+  usage_limit     Int?
+  per_user_limit  Int?            @default(1)
+  times_used      Int             @default(0)
+  
+  // Relations
+  shop_id         Int
+  shop            shops           @relation(fields: [shop_id], references: [id])
+  branch_id       Int?
+  branch          branches?       @relation(fields: [branch_id], references: [id])
+  user_restrictions users[]       @relation("coupon_user_restrictions")
+  product_restrictions products[] @relation("coupon_product_restrictions")
+  
+  // Redemption tracking
+  redemptions     coupon_redemptions[]
+  
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+}
+
+model coupon_redemptions {
+  id              Int             @id @default(autoincrement())
+  coupon_id       Int
+  order_id        Int?
+  user_id         Int?
+  redeemed_at     DateTime        @default(now())
+  discount_amount Decimal           @db.Decimal(10, 2)
+  
+  // Relations
+  coupon          coupons         @relation(fields: [coupon_id], references: [id])
+  // order           orders?        @relation(fields: [order_id], references: [id])
+  user            users?         @relation(fields: [user_id], references: [id])
+  branch          branches?      @relation(fields: [branch_id], references: [id])
+  branch_id       Int?
+  
+  @@index([coupon_id, user_id])
+}
+
+
+
+model gift_cards {
+  id              Int             @id @default(autoincrement())
+  code            String          @unique
+  initial_value   Decimal           @db.Decimal(10, 2)
+  current_value   Decimal           @db.Decimal(10, 2)
+  is_active       Boolean         @default(true)
+  expiry_date     DateTime?
+  
+  // Relations
+  shop_id         Int
+  shop            shops           @relation(fields: [shop_id], references: [id])
+  branch_id       Int?
+  branch          branches?       @relation(fields: [branch_id], references: [id])
+  purchaser_id    Int?
+  purchaser       users?          @relation("gift_card_purchasers", fields: [purchaser_id], references: [id])
+  recipient_email String?
+  recipient_name  String?
+  message         String?
+  
+  // Transaction history
+  transactions    gift_card_transactions[]
+  
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+}
+
+model gift_card_transactions {
+  id              Int             @id @default(autoincrement())
+  gift_card_id    Int
+  order_id        Int?
+  amount          Decimal           @db.Decimal(10, 2) // Positive for purchases, negative for redemptions
+  balance_after   Decimal           @db.Decimal(10, 2)
+  transaction_type gift_card_transaction_type
+  notes           String?
+  
+  // Relations
+  gift_card       gift_cards      @relation(fields: [gift_card_id], references: [id])
+  // order           orders?         @relation(fields: [order_id], references: [id])
+  processed_by_id Int?
+  processed_by    users?          @relation(fields: [processed_by_id], references: [id])
+  
+  created_at      DateTime        @default(now())
+  
+  @@index([gift_card_id])
+}
+
+
+enum discount_applies_to {
+  all_products
+  specific_products
+  specific_categories
+  minimum_order
+}
+
+enum gift_card_transaction_type {
+  purchase
+  redemption
+  adjustment
+  refund
+}
+
+

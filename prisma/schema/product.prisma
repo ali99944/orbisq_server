@@ -1,0 +1,75 @@
+model products {
+  id                      Int       @id @default(autoincrement())
+  name                    String
+  image                   String?
+  description             String?
+  short_description       String?   // NEW: For quick product preview
+  calories                Float?    @default(0)
+  prepare_time            Int?      @default(0)
+  
+  // NEW: Nutritional information
+  protein                 Float?    
+  carbohydrates           Float?
+  fat                     Float?
+  allergens               String?
+  
+  product_category_id     Int
+  product_category        product_categories @relation(fields: [product_category_id], references: [id])
+
+  tax_id                  Int?
+  tax                     taxes?    @relation(fields: [tax_id], references: [id])
+
+  discount_id             Int?
+  discount                discounts? @relation(fields: [discount_id], references: [id])
+
+  is_active               Boolean   @default(true)
+  is_featured             Boolean   @default(false) // NEW: Mark featured products
+  is_retail               Boolean   @default(false)
+
+  sku_number              String?
+  reference_code          String?
+  barcode                 String?   // NEW: For inventory management
+
+  price                   Float?
+  cost_price              Float?    // NEW: For profit calculations
+  pricing_type            pricing_type @default(fixed)
+  sales_unit_type         sales_unit_type @default(piece)
+  cost_calculation_unit   cost_calculation_unit @default(ingredient)
+
+  stock                   Int       @default(0)
+  low_stock_threshold     Int?      @default(5) // NEW: For inventory alerts
+  sort_order              Int       @default(0)
+  
+  // NEW: Product variants
+  has_variants           Boolean   @default(false)
+  // Relations
+  modifier_groups   product_modifier_groups[]
+  addon_groups      product_addon_groups[]
+  
+  shop_id                Int?
+  shop                   shops?    @relation(fields: [shop_id], references: [id])
+
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  coupons coupons[] @relation("coupon_product_restrictions")
+}
+
+// ENUMS with new additions
+enum pricing_type {
+  fixed
+  dynamic
+}
+
+enum sales_unit_type {
+  piece
+  weight
+  volume // NEW: For liquid products
+  length // NEW: For fabric, etc.
+}
+
+enum cost_calculation_unit {
+  ingredient
+  operation
+  time_based // NEW: For services charged by time
+}

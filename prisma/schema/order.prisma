@@ -1,0 +1,156 @@
+model orders {
+  id                String      @id @default(uuid())
+  order_number      String      @unique // NEW: Human-readable like "ORD-2023-0001"
+  status            order_status @default(pending)
+  
+  // Customer relationship
+  customer_id       Int?
+  customer          customers?  @relation(fields: [customer_id], references: [id])
+  
+  // Desk relationship
+  desk_id           Int? @unique
+  desk              desks?      @relation(fields: [desk_id], references: [id])
+
+  order_type   order_type // NEW: Crucial for distinguishing order types
+
+  // For Takeaway
+  takeaway_pickup_time DateTime? // Scheduled pickup time
+  takeaway_customer_name String?   // If different from registered customer or for quick orders
+  takeaway_customer_phone String?  // If different from registered customer or for quick orders
+
+  // For Delivery
+  delivery_address       String?
+  delivery_landmark      String?
+  delivery_instructions  String?   // e.g., "Leave at door"
+  delivery_customer_name String?   // If recipient is different
+  delivery_customer_phone String?  // If recipient phone is different
+  estimated_delivery_time DateTime?
+  actual_delivery_time   DateTime?
+  delivery_fee           Float?    @default(0)
+  
+  // Staff relationships
+  waiter_id         Int?        // NEW: Who took the order
+//   waiter            users?      @relation("waiter_orders", fields: [waiter_id], references: [id])
+  chef_id           Int?        // NEW: Who prepared the order
+//   chef              users?      @relation("chef_orders", fields: [chef_id], references: [id])
+  
+  // Order items
+  // items             order_items[]
+  
+  // Pricing information
+  subtotal          Float       @default(0)
+  tax_amount        Float       @default(0)
+  discount_amount   Float       @default(0)
+  service_charge    Float?      @default(0) // NEW
+  tip_amount        Float?      @default(0) // NEW
+  total             Float       @default(0)
+  
+  // Payment information
+  payment_status    payment_status @default(unpaid)
+  payment_method    payment_method?
+  transaction_id    String?     // NEW: Payment processor reference
+  paid_at           DateTime?   // NEW
+  
+  // NEW: Order timing
+  placed_at         DateTime    @default(now()) // NEW
+  preparation_time  Int?        // NEW: In minutes
+  ready_at          DateTime?   // NEW
+  served_at         DateTime?   // NEW
+  completed_at      DateTime?   // NEW
+  
+  // NEW: Special requests
+  notes             String?     // NEW: Customer notes
+  dietary_restrictions String? // NEW: Allergies/special requirements
+  
+  // Shop relationship
+  shop_id           Int
+  shop              shops       @relation(fields: [shop_id], references: [id])
+  
+  // NEW: Cancellation info
+  cancelled_at      DateTime?   // NEW
+  cancellation_reason String?   // NEW
+  
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
+
+  // coupon_redemptions coupon_redemptions[]
+
+  // gift_card_transactions gift_card_transactions[]
+}
+
+model order_items {
+  id                Int         @id @default(autoincrement())
+  order_id          Int
+  // order             orders      @relation(fields: [order_id], references: [id])
+  
+  product_id        Int
+  // product           products    @relation(fields: [product_id], references: [id])
+  
+  quantity          Int         @default(1)
+  unit_price        Float
+  total_price       Float       @default(0)
+  
+  // NEW: Customization options
+  special_requests  String?     // NEW: "No onions", "Extra spicy" etc.
+  variant_options   Json?       // NEW: For product variants
+  
+  // NEW: Preparation tracking
+  status            item_status @default(pending)
+  started_at        DateTime?   // NEW
+  completed_at      DateTime?   // NEW
+  
+  // NEW: Discount application
+  applied_discount_id Int?
+  applied_discount   discounts? @relation(fields: [applied_discount_id], references: [id])
+  
+  created_at        DateTime    @default(now())
+
+  order_item_modifiers order_item_modifiers[]
+
+  order_item_addons order_item_addons[]
+}
+
+enum order_status {
+  pending
+  confirmed
+  preparing
+  ready // For pickup or out for delivery
+  served // For dine-in
+  out_for_delivery // New for delivery
+  delivered // New for delivery
+  completed // Generic completion, can be after served/delivered/picked_up
+  cancelled
+  refunded
+}
+
+enum item_status {
+  pending
+  preparing
+  ready
+  served
+  cancelled
+}
+
+enum payment_status {
+  unpaid
+  partially_paid
+  paid
+  refunded
+  failed
+}
+
+enum payment_method {
+  cash
+  credit_card
+  debit_card
+  mobile_wallet
+  bank_transfer
+  voucher
+  online_payment
+}
+
+enum order_type {
+  dine_in
+  takeaway
+  delivery
+}

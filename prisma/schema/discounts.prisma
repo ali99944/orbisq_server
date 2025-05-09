@@ -1,0 +1,47 @@
+model discounts {
+  id            Int       @id @default(autoincrement())
+  name          String
+  description   String?
+  type          discount_type
+  value         Decimal     @db.Decimal(10, 2)
+  is_active     Boolean   @default(true)
+  start_date    DateTime?
+  end_date      DateTime?
+  coupon_code   String?   @unique // NEW: For coupon-based discounts
+  min_order     Decimal?    @db.Decimal(10, 2) // NEW: Minimum order value
+  max_discount  Decimal?    @db.Decimal(10, 2) // NEW: Maximum discount amount
+  usage_limit   Int?      // NEW: Max times discount can be used
+  times_used    Int       @default(0) // NEW: Track usage
+  
+  // NEW: Customer eligibility
+  customer_eligibility CustomerEligibility @default(all) // NEW: all, specific_groups, specific_customers
+  customer_ids         Int[]     // NEW: For specific customer targeting
+  
+  shop_id      Int
+  shop         shops     @relation(fields: [shop_id], references: [id])
+
+  products     products[]
+
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  desks desks[]
+
+  order_items order_items[]
+}
+
+
+enum CustomerEligibility {
+  all
+  specific_groups
+  specific_customers
+  first_time_buyers // NEW
+  returning_customers // NEW
+}
+
+enum discount_type {
+  percentage
+  fixed_amount_off
+  fixed_price
+  free_shipping // NEW: For shipping discounts
+}
