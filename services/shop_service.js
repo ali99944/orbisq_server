@@ -1,337 +1,384 @@
-// services/shop.service.js
 
-import prisma from "../lib/prisma.js"; // Assuming this path is correct
-import promiseAsyncWrapper from "../lib/wrappers/promise_async_wrapper.js";
+import prisma from '../lib/prisma.js';
+import { BAD_REQUEST } from '../lib/status_codes.js';
+import Validator from '../lib/validator.js';
+import promiseAsyncWrapper from '../lib/wrappers/promise_async_wrapper.js';
+import CustomError from '../utils/custom_error.js';
 
-// --- Helper function to build include objects for Prisma queries ---
-const getShopIncludeRelations = () => ({
-    address: true,
-    contact_info: true,
-    social_links: true,
-    currency_info: true,
-    business_info: true,
-    shop_theme: true,
-    // Add other relations you frequently need to fetch with a shop
-    // e.g., products: { take: 10, orderBy: { created_at: 'desc' } }
-});
-
-// --- Read Operations ---
-
-export const getShops = (queryOptions = {}) => promiseAsyncWrapper(async (resolve, reject) => {
-    try {
-        const { page = 1, limit = 10, status, searchTerm, sortBy = 'created_at', sortOrder = 'desc', ...otherFilters } = queryOptions;
-        const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-        const take = parseInt(limit, 10);
-
-        const where = {};
-        if (status) {
-            where.status = status;
-        }
-        if (searchTerm) {
-            where.OR = [
-                { name: { contains: searchTerm, mode: 'insensitive' } },
-                { slug: { contains: searchTerm, mode: 'insensitive' } },
-                { description: { contains: searchTerm, mode: 'insensitive' } },
-            ];
-        }
-        // Add other filters from otherFilters if needed
-
-        const shops = await prisma.shops.findMany({
-            where,
-            include: getShopIncludeRelations(),
-            skip: isNaN(skip) ? undefined : skip,
-            take: isNaN(take) ? undefined : take,
-            orderBy: {
-                [sortBy]: sortOrder,
-            },
+export const createShop = async (shopData) => new Promise(
+    promiseAsyncWrapper(async (resolve, reject) => {
+        // Validate required fields
+        await Validator.validateNotNull({
+            name: shopData.name,
+            description: shopData.description
         });
 
-        const totalShops = await prisma.shops.count({ where });
+        // Generate unique slug if not provided
+        if (!shopData.slug) {
+            shopData.slug = shopData.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w-]+/g, '');
+        }
 
-        return resolve({
-            data: shops,
-            pagination: {
-                total: totalShops,
-                page: parseInt(page, 10),
-                limit: parseInt(limit, 10),
-                totalPages: Math.ceil(totalShops / parseInt(limit, 10)),
-            },
+        // Check if slug already exists
+        const existingShop = await prisma.shops.findUnique({
+            where: { slug: shopData.slug }
         });
-    } catch (error) {
-        console.error("Error in getShops service:", error);
-        return reject(error);
-    }
-});
 
-export const getShopById = (id) => promiseAsyncWrapper(async (resolve, reject) => {
-    try {
-        if (!id || isNaN(parseInt(id))) {
-            return reject(new Error("Invalid shop ID provided."));
-        }
-        const shop = await prisma.shops.findUnique({
-            where: { id: parseInt(id, 10) },
-            include: getShopIncludeRelations(),
-        });
-        if (!shop) {
-            return reject(new Error(`Shop with ID ${id} not found.`));
-        }
-        return resolve(shop);
-    } catch (error) {
-        console.error(`Error in getShopById service for ID ${id}:`, error);
-        return reject(error);
-    }
-});
-
-export const getShopBySlug = (slug) => promiseAsyncWrapper(async (resolve, reject) => {
-    try {
-        if (!slug) {
-            return reject(new Error("Slug must be provided."));
-        }
-        const shop = await prisma.shops.findUnique({
-            where: { slug },
-            include: getShopIncludeRelations(),
-        });
-        if (!shop) {
-            return reject(new Error(`Shop with slug "${slug}" not found.`));
-        }
-        return resolve(shop);
-    } catch (error) {
-        console.error(`Error in getShopBySlug service for slug ${slug}:`, error);
-        return reject(error);
-    }
-});
-
-
-// --- Create Operation ---
-
-export const createShop = (shopData) => promiseAsyncWrapper(async (resolve, reject) => {
-    try {
-        const {
-            address,
-            contact_info,
-            social_links,
-            currency_info,
-            business_info,
-            shop_theme,
-            ...mainShopData
-        } = shopData;
-
-        // Basic validation (you'll want more robust validation, e.g., with Joi or Zod)
-        if (!mainShopData.name || !mainShopData.slug || !currency_info || !business_info || !shop_theme) {
-            return reject(new Error("Missing required fields for shop creation (name, slug, currency_info, business_info, shop_theme)."));
+        if (existingShop) {
+            throw new CustomError('Shop with this slug already exists', BAD_REQUEST);
         }
 
-        // Ensure slug is unique before attempting to create
-        const existingShopBySlug = await prisma.shops.findUnique({ where: { slug: mainShopData.slug } });
-        if (existingShopBySlug) {
-            return reject(new Error(`Shop with slug "${mainShopData.slug}" already exists.`));
-        }
-
-        const createdShop = await prisma.shops.create({
-            data: {
-                ...mainShopData,
-                // Nested writes for one-to-one relations
-                ...(address && { address: { create: address } }),
-                ...(contact_info && { contact_info: { create: contact_info } }),
-                ...(social_links && { social_links: { create: social_links } }),
-                currency_info: { create: currency_info }, // Required
-                business_info: { create: business_info }, // Required
-                shop_theme: { create: shop_theme },       // Required
-            },
-            include: getShopIncludeRelations(),
-        });
-        return resolve(createdShop);
-    } catch (error) {
-        console.error("Error in createShop service:", error);
-        if (error.code === 'P2002' && error.meta?.target?.includes('slug')) { // Prisma unique constraint violation
-             return reject(new Error(`Shop with slug "${shopData.slug}" already exists.`));
-        }
-        return reject(error);
-    }
-});
-
-
-// --- Update Operation ---
-
-export const updateShop = (id, shopUpdateData) => promiseAsyncWrapper(async (resolve, reject) => {
-    try {
-        if (!id || isNaN(parseInt(id))) {
-            return reject(new Error("Invalid shop ID provided for update."));
-        }
-        const shopId = parseInt(id, 10);
-
-        const {
-            address,
-            contact_info,
-            social_links,
-            currency_info,
-            business_info,
-            shop_theme,
-            ...mainShopUpdateData
-        } = shopUpdateData;
-
-        // Ensure shop exists
-        const existingShop = await prisma.shops.findUnique({ where: { id: shopId } });
-        if (!existingShop) {
-            return reject(new Error(`Shop with ID ${shopId} not found for update.`));
-        }
-
-        // If slug is being updated, ensure it remains unique (excluding the current shop)
-        if (mainShopUpdateData.slug && mainShopUpdateData.slug !== existingShop.slug) {
-            const conflictingShop = await prisma.shops.findFirst({
-                where: {
-                    slug: mainShopUpdateData.slug,
-                    NOT: { id: shopId },
-                },
-            });
-            if (conflictingShop) {
-                return reject(new Error(`Another shop with slug "${mainShopUpdateData.slug}" already exists.`));
+        // Create shop with all related data in a transaction
+        const shop = await prisma.$transaction(async (prisma) => {
+            // Create address if provided
+            let address;
+            if (shopData.address) {
+                address = await prisma.addresses.create({
+                    data: {
+                        ...shopData.address,
+                        country: shopData.address.country || 'Egypt'
+                    }
+                });
             }
-        }
 
-        const updatedShop = await prisma.shops.update({
-            where: { id: shopId },
-            data: {
-                ...mainShopUpdateData,
-                // Nested updates for one-to-one.
-                // `upsert` is useful if you want to create if not exists, or update if exists.
-                // `update` requires the related record to exist.
-                // `connectOrCreate` can also be an option.
-                // For simplicity, using `update` assuming related records are managed alongside the shop.
-                // If the related record might not exist, you'd use `upsert` or handle creation separately.
+            // Create contact info if provided
+            let contactInfo;
+            if (shopData.contact_info) {
+                contactInfo = await prisma.contact_infos.create({
+                    data: shopData.contact_info
+                });
+            }
 
-                ...(address && {
-                    address: existingShop.address_id
-                        ? { update: { where: { id: existingShop.address_id }, data: address } }
-                        : { create: address } // If no address_id, create a new one
-                }),
-                ...(contact_info && {
-                    contact_info: existingShop.contact_info_id
-                        ? { update: { where: { id: existingShop.contact_info_id }, data: contact_info } }
-                        : { create: contact_info }
-                }),
-                ...(social_links && {
-                    social_links: existingShop.social_links_id
-                        ? { update: { where: { id: existingShop.social_links_id }, data: social_links } }
-                        : { create: social_links }
-                }),
-                ...(currency_info && {
-                    currency_info: { update: { where: { id: existingShop.currency_info_id }, data: currency_info } }
-                }), // Assuming currency_info_id always exists after creation
-                ...(business_info && {
-                    business_info: { update: { where: { id: existingShop.business_info_id }, data: business_info } }
-                }), // Assuming business_info_id always exists
-                ...(shop_theme && {
-                    shop_theme: { update: { where: { id: existingShop.shop_theme_id }, data: shop_theme } }
-                }), // Assuming shop_theme_id always exists
-            },
-            include: getShopIncludeRelations(),
+            // Create social links if provided
+            let socialLinks;
+            if (shopData.social_links) {
+                socialLinks = await prisma.social_links.create({
+                    data: shopData.social_links
+                });
+            }
+
+            // Create currency info (required)
+            const currencyInfo = await prisma.currency_infos.create({
+                data: {
+                    ...shopData.currency_info,
+                    currency: shopData.currency_info?.currency || 'LE',
+                    currency_symbol: shopData.currency_info?.currency_symbol || 'L.E',
+                    currency_code: shopData.currency_info?.currency_code || 'EGP'
+                }
+            });
+
+            // Create business info (required)
+            const businessInfo = await prisma.business_infos.create({
+                data: {
+                    ...shopData.business_info,
+                    vat_type: shopData.business_info?.vat_type || 'inclusive'
+                }
+            });
+
+            // Create shop theme (required)
+            const shopTheme = await prisma.shop_theme.create({
+                data: {
+                    primary_color: shopData.shop_theme?.primary_color || '#000000',
+                    secondary_color: shopData.shop_theme?.secondary_color || '#000000',
+                    background_color: shopData.shop_theme?.background_color || '#000000',
+                    background_image: shopData.shop_theme?.background_image,
+                    accent_color: shopData.shop_theme?.accent_color || '#000000',
+                    text_color: shopData.shop_theme?.text_color || '#000000'
+                }
+            });
+
+            // Create the main shop record
+            return await prisma.shops.create({
+                data: {
+                    name: shopData.name,
+                    slug: shopData.slug,
+                    description: shopData.description,
+                    status: shopData.status || 'active',
+                    opening_hours: shopData.opening_hours,
+                    timezone: shopData.timezone || 'Africa/Cairo',
+                    language: shopData.language || 'ar-EG',
+                    payment_methods: shopData.payment_methods || [],
+                    fulfillment_types: shopData.fulfillment_types || ['dine-in'],
+                    
+                    // Relations
+                    address_id: address?.id,
+                    contact_info_id: contactInfo?.id,
+                    social_links_id: socialLinks?.id,
+                    currency_info_id: currencyInfo.id,
+                    business_info_id: businessInfo.id,
+                    shop_theme_id: shopTheme.id
+                },
+                include: {
+                    address: true,
+                    contact_info: true,
+                    social_links: true,
+                    currency_info: true,
+                    business_info: true,
+                    shop_theme: true
+                }
+            });
         });
-        return resolve(updatedShop);
-    } catch (error) {
-        console.error(`Error in updateShop service for ID ${id}:`, error);
-         if (error.code === 'P2002' && error.meta?.target?.includes('slug')) {
-             return reject(new Error(`Another shop with slug "${shopUpdateData.slug}" already exists.`));
-        }
-        return reject(error);
-    }
-});
 
+        return resolve(shop);
+    })
+);
 
-// --- Delete Operation ---
-
-export const deleteShop = (id) => promiseAsyncWrapper(async (resolve, reject) => {
-    try {
-        if (!id || isNaN(parseInt(id))) {
-            return reject(new Error("Invalid shop ID provided for deletion."));
-        }
-        const shopId = parseInt(id, 10);
-
-        // Ensure shop exists
+export const updateShop = async (shopId, updateData) => new Promise(
+    promiseAsyncWrapper(async (resolve, reject) => {
+        // Check if shop exists
         const existingShop = await prisma.shops.findUnique({
             where: { id: shopId },
-            // Include related IDs to delete them explicitly if cascade delete isn't set up
-            // or if you want to perform additional logic before deleting.
-            // Prisma's default for 1-to-1 on the side holding the foreign key is usually restrictive.
-            // You might need to delete related records first or adjust your schema for cascading deletes.
-            select: {
-                address_id: true,
-                contact_info_id: true,
-                social_links_id: true,
-                currency_info_id: true,
-                business_info_id: true,
-                shop_theme_id: true,
-                // Check for related orders, products etc. if you have deletion rules
-                _count: {
-                    select: { orders: true /*, products: true */ }
+            include: {
+                address: true,
+                contact_info: true,
+                social_links: true,
+                currency_info: true,
+                business_info: true,
+                shop_theme: true
+            }
+        });
+
+        if (!existingShop) {
+            throw new CustomError('Shop not found', BAD_REQUEST);
+        }
+
+        // Update shop and related data in a transaction
+        const updatedShop = await prisma.$transaction(async (prisma) => {
+            // Update address if provided
+            if (updateData.address) {
+                await prisma.addresses.update({
+                    where: { id: existingShop.address_id },
+                    data: updateData.address
+                });
+            }
+
+            // Update contact info if provided
+            if (updateData.contact_info) {
+                await prisma.contact_infos.update({
+                    where: { id: existingShop.contact_info_id },
+                    data: updateData.contact_info
+                });
+            }
+
+            // Update social links if provided
+            if (updateData.social_links) {
+                await prisma.social_links.update({
+                    where: { id: existingShop.social_links_id },
+                    data: updateData.social_links
+                });
+            }
+
+            // Update currency info if provided
+            if (updateData.currency_info) {
+                await prisma.currency_infos.update({
+                    where: { id: existingShop.currency_info_id },
+                    data: updateData.currency_info
+                });
+            }
+
+            // Update business info if provided
+            if (updateData.business_info) {
+                await prisma.business_infos.update({
+                    where: { id: existingShop.business_info_id },
+                    data: updateData.business_info
+                });
+            }
+
+            // Update shop theme if provided
+            if (updateData.shop_theme) {
+                await prisma.shop_theme.update({
+                    where: { id: existingShop.shop_theme_id },
+                    data: updateData.shop_theme
+                });
+            }
+
+            // Update the main shop record
+            return await prisma.shops.update({
+                where: { id: shopId },
+                data: {
+                    name: updateData.name,
+                    description: updateData.description,
+                    status: updateData.status,
+                    opening_hours: updateData.opening_hours,
+                    timezone: updateData.timezone,
+                    language: updateData.language,
+                    payment_methods: updateData.payment_methods,
+                    fulfillment_types: updateData.fulfillment_types
+                },
+                include: {
+                    address: true,
+                    contact_info: true,
+                    social_links: true,
+                    currency_info: true,
+                    business_info: true,
+                    shop_theme: true
+                }
+            });
+        });
+
+        return resolve(updatedShop);
+    })
+);
+
+export const getShopById = async (shopId) => new Promise(
+    promiseAsyncWrapper(async (resolve, reject) => {
+        const shop = await prisma.shops.findUnique({
+            where: { id: shopId },
+            include: {
+                address: true,
+                contact_info: true,
+                social_links: true,
+                currency_info: true,
+                business_info: true,
+                shop_theme: true,
+                categories: true,
+                products: true,
+                discounts: true,
+                desks: true,
+                branches: true
+            }
+        });
+
+        if (!shop) {
+            throw new CustomError('Shop not found', BAD_REQUEST);
+        }
+
+        return resolve(shop);
+    })
+);
+
+export const getShopBySlug = async (slug) => new Promise(
+    promiseAsyncWrapper(async (resolve, reject) => {
+        const shop = await prisma.shops.findUnique({
+            where: { slug },
+            include: {
+                address: true,
+                contact_info: true,
+                social_links: true,
+                currency_info: true,
+                business_info: true,
+                shop_theme: true,
+                categories: {
+                    where: { is_active: true },
+                    orderBy: { sort_order: 'asc' }
+                },
+                products: {
+                    where: { is_active: true },
+                    orderBy: { sort_order: 'asc' }
+                },
+                discounts: {
+                    where: { is_active: true }
+                },
+                desks: {
+                    where: { status: 'free' }
                 }
             }
         });
 
-        if (!existingShop) {
-            return reject(new Error(`Shop with ID ${shopId} not found for deletion.`));
+        if (!shop) {
+            throw new CustomError('Shop not found', BAD_REQUEST);
         }
 
-        // Example: Prevent deletion if there are associated orders (adjust business logic as needed)
-        if (existingShop._count.orders > 0) {
-            return reject(new Error(`Cannot delete shop with ID ${shopId} as it has associated orders. Consider deactivating it instead.`));
+        return resolve(shop);
+    })
+);
+
+export const getAllShops = async (filters = {}) => new Promise(
+    promiseAsyncWrapper(async (resolve, reject) => {
+        const { status, search } = filters;
+        
+        const where = {};
+        
+        if (status) {
+            where.status = status;
+        }
+        
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } }
+            ];
         }
 
-        // Transaction to delete shop and its direct one-to-one related records
-        // This is safer. If your schema is set up with ON DELETE CASCADE for these,
-        // deleting `shops` directly might be enough.
-        // However, explicit deletion in a transaction gives more control.
-        await prisma.$transaction(async (tx) => {
-            if (existingShop.address_id) {
-                await tx.addresses.delete({ where: { id: existingShop.address_id } });
-            }
-            if (existingShop.contact_info_id) {
-                await tx.contact_infos.delete({ where: { id: existingShop.contact_info_id } });
-            }
-            if (existingShop.social_links_id) {
-                await tx.social_links.delete({ where: { id: existingShop.social_links_id } });
-            }
-            // These are required and should always exist if the shop exists
-            await tx.shop_theme.delete({ where: { id: existingShop.shop_theme_id } });
-            await tx.business_infos.delete({ where: { id: existingShop.business_info_id } });
-            await tx.currency_infos.delete({ where: { id: existingShop.currency_info_id } });
-
-            // Finally, delete the shop itself
-            await tx.shops.delete({ where: { id: shopId } });
+        const shops = await prisma.shops.findMany({
+            where,
+            include: {
+                address: true,
+                contact_info: true,
+                currency_info: true,
+                business_info: true
+            },
+            orderBy: { created_at: 'desc' }
         });
 
-        return resolve({ message: `Shop with ID ${shopId} and its associated data deleted successfully.` });
-    } catch (error) {
-        console.error(`Error in deleteShop service for ID ${id}:`, error);
-        return reject(error);
-    }
-});
+        return resolve(shops);
+    })
+);
 
-// --- Additional Utility Functions (Examples) ---
+export const deleteShop = async (shopId) => new Promise(
+    promiseAsyncWrapper(async (resolve, reject) => {
+        // Check if shop exists
+        const shop = await prisma.shops.findUnique({
+            where: { id: shopId },
+            include: {
+                address: true,
+                contact_info: true,
+                social_links: true,
+                currency_info: true,
+                business_info: true,
+                shop_theme: true
+            }
+        });
 
-export const updateShopStatus = (id, status) => promiseAsyncWrapper(async (resolve, reject) => {
-    try {
-        if (!id || isNaN(parseInt(id))) {
-            return reject(new Error("Invalid shop ID."));
+        if (!shop) {
+            throw new CustomError('Shop not found', BAD_REQUEST);
         }
-        if (!status || !Object.values(prisma.ShopStatus).includes(status)) { // Assuming prisma generates enums like this
-             return reject(new Error("Invalid status value."));
-        }
-        const shopId = parseInt(id, 10);
+
+        // Delete all related data in transaction
+        await prisma.$transaction(async (prisma) => {
+            if (shop.address_id) {
+                await prisma.addresses.delete({ where: { id: shop.address_id } });
+            }
+            if (shop.contact_info_id) {
+                await prisma.contact_infos.delete({ where: { id: shop.contact_info_id } });
+            }
+            if (shop.social_links_id) {
+                await prisma.social_links.delete({ where: { id: shop.social_links_id } });
+            }
+            if (shop.currency_info_id) {
+                await prisma.currency_infos.delete({ where: { id: shop.currency_info_id } });
+            }
+            if (shop.business_info_id) {
+                await prisma.business_infos.delete({ where: { id: shop.business_info_id } });
+            }
+            if (shop.shop_theme_id) {
+                await prisma.shop_theme.delete({ where: { id: shop.shop_theme_id } });
+            }
+
+            await prisma.shops.delete({ where: { id: shopId } });
+        });
+
+        return resolve({ success: true });
+    })
+);
+
+export const updateShopLogo = async (shopId, logoPath) => new Promise(
+    promiseAsyncWrapper(async (resolve, reject) => {
         const updatedShop = await prisma.shops.update({
             where: { id: shopId },
-            data: { status },
-            select: { id: true, status: true } // Only select what's needed
+            data: { logo: logoPath }
         });
-        return resolve(updatedShop);
-    } catch (error) {
-        console.error(`Error updating status for shop ID ${id}:`, error);
-        return reject(error);
-    }
-});
 
-// You could add more specific functions like:
-// - incrementOrdersCount(shopId)
-// - updateLastSaleAt(shopId)
-// - getShopsByStatus(status)
-// - etc.
+        return resolve(updatedShop);
+    })
+);
+
+export const updateShopCover = async (shopId, coverPath) => new Promise(
+    promiseAsyncWrapper(async (resolve, reject) => {
+        const updatedShop = await prisma.shops.update({
+            where: { id: shopId },
+            data: { cover: coverPath }
+        });
+
+        return resolve(updatedShop);
+    })
+);

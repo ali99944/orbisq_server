@@ -55,6 +55,11 @@ model shops {
     categories product_categories[]
     products products[]
     discounts discounts[]
+
+    access_portal shop_access_portal?
+
+    shop_owner_id Int
+    shop_owner shop_owners @relation(fields: [shop_owner_id], references: [id])
 }
 
 model addresses {

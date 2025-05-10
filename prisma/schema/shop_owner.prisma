@@ -1,0 +1,50 @@
+model shop_owners {
+  id              Int             @id @default(autoincrement())
+  first_name      String
+  last_name       String
+  email           String          @unique
+  phone           String          @unique
+  password        String
+  is_active       Boolean         @default(false)
+  email_verified  Boolean         @default(false)
+  phone_verified  Boolean         @default(false)
+  last_login_at   DateTime?
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+
+  // Relations
+  shops           shops[]
+  access_tokens   shop_access_token[]
+}
+
+model shop_access_portal {
+  id              Int             @id @default(autoincrement())
+  shop_id         Int             @unique
+  username        String          @unique
+  password        String
+  is_active       Boolean         @default(true)
+  last_login_at   DateTime?
+  permissions     Json?           // Custom permissions for this portal
+  created_at      DateTime        @default(now())
+  updated_at      DateTime        @updatedAt
+
+  // Relations
+  shop            shops           @relation(fields: [shop_id], references: [id])
+  access_tokens   shop_access_token[]
+}
+
+model shop_access_token {
+  id              Int             @id @default(autoincrement())
+  token           String          @unique
+  owner_id        Int?
+  portal_id       Int?
+  expires_at      DateTime
+  last_used_at    DateTime?
+  ip_address      String?
+  user_agent      String?
+  created_at      DateTime        @default(now())
+
+  // Relations
+  owner           shop_owners?    @relation(fields: [owner_id], references: [id])
+  portal          shop_access_portal? @relation(fields: [portal_id], references: [id])
+}
