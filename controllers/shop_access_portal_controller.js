@@ -1,4 +1,4 @@
-import { asyncWrapper } from '../helpers/wrappers/async_wrapper.js';
+import asyncWrapper from '../lib/wrappers/async_wrapper.js';
 import { 
     createShopAccessPortal,
     loginShopPortal,

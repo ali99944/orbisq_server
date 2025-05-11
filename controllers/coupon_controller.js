@@ -1,3 +1,5 @@
+import { CREATED, OK } from "../lib/status_codes.js";
+import asyncWrapper from "../lib/wrappers/async_wrapper.js";
 import {
     createCouponService,
     getAllCouponsService,
@@ -8,8 +10,6 @@ import {
     addProductRestrictionToCouponService,
     removeProductRestrictionFromCouponService
 } from "../services/coupon_service.js";
-import asyncWrapper from "../utils/wrappers/async_wrapper.js";
-import { CREATED, OK } from "../utils/status_codes.js";
 
 export const createCouponController = asyncWrapper(
     async (req, res) => {

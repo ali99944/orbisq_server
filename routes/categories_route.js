@@ -20,11 +20,12 @@ router.get('/shops/:shopId/categories', getShopCategoriesController);
 router.get('/shops/:shopId/categories/:slug', getCategoryBySlugController);
 
 // Owner-protected routes
-router.post('/categories', authenticateOwner, categoryImageUpload, createCategoryController);
-router.get('/categories/:id', authenticateOwner, getCategoryController);
-router.put('/categories/:id', authenticateOwner, categoryImageUpload, updateCategoryController);
-router.patch('/categories/:id/status', authenticateOwner, updateCategoryStatusController);
-router.patch('/categories/:id/image', authenticateOwner, categoryImageUpload, updateCategoryImageController);
-router.delete('/categories/:id', authenticateOwner, deleteCategoryController);
+router.post('/categories', categoryImageUpload, createCategoryController);
+router.get('/categories/:id', getCategoryController);
+router.put('/categories/:id', categoryImageUpload, updateCategoryController);
+router.patch('/categories/:id/image', categoryImageUpload, updateCategoryImageController);
+router.delete('/categories/:id', deleteCategoryController);
+
+router.post('/categories/:id/toggle-status', updateCategoryStatusController);
 
 export default router;

@@ -1,9 +1,9 @@
-import prisma from "../lib/prisma.js"; // Assuming prisma client is here
+import { generateReferenceCode } from "../lib/generator.js";
+import prisma from "../lib/prisma.js";
+import { BAD_REQUEST, NOT_FOUND, INTERNAL_SERVER } from "../lib/status_codes.js";
+import Validator from "../lib/validator.js";
+import promiseAsyncWrapper from "../lib/wrappers/promise_async_wrapper.js";
 import CustomError from "../utils/custom_error.js";
-import { BAD_REQUEST, NOT_FOUND, INTERNAL_SERVER_ERROR } from "../utils/status_codes.js";
-import promiseAsyncWrapper from "../utils/wrappers/promise_async_wrapper.js";
-import Validator from "../utils/validator.js";
-import { generateReferenceCode } from "../utils/generators.js"; // Assuming your generator is here
 
 // Helper to parse float or return null
 const parseFloatOrNull = (value) => {
@@ -18,20 +18,20 @@ const parseIntOrNull = (value) => {
 };
 
 
-export const createProductService = async (productData, file) => new Promise(
+export const createProductService = async (productData, file, shop_id) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
             // --- Validation ---
             await Validator.validateNotNull({
                 name: productData.name,
                 product_category_id: productData.product_category_id,
-                shop_id: productData.shop_id, // Assuming shop_id is mandatory
+                shop_id: +shop_id, // Assuming shop_id is mandatory
                 // price: productData.price // Price might be optional depending on pricing_type
             });
 
             await Validator.isText(productData.name);
             await Validator.isNumber(parseInt(productData.product_category_id));
-            await Validator.isNumber(parseInt(productData.shop_id));
+            // await Validator.isNumber(parseInt(productData.shop_id));
 
             if (productData.price) await Validator.isNumber(parseFloat(productData.price));
             if (productData.cost_price) await Validator.isNumber(parseFloat(productData.cost_price));
@@ -69,10 +69,10 @@ export const createProductService = async (productData, file) => new Promise(
             }
 
             const shopExists = await prisma.shops.findUnique({
-                where: { id: parseInt(productData.shop_id) }
+                where: { id: parseInt(+shop_id) }
             });
             if (!shopExists) {
-                return reject(new CustomError(`Shop with ID ${productData.shop_id} not found.`, NOT_FOUND));
+                return reject(new CustomError(`Shop with ID ${+shop_id} not found.`, NOT_FOUND));
             }
 
             if (productData.tax_id) {
@@ -97,7 +97,7 @@ export const createProductService = async (productData, file) => new Promise(
                 allergens: productData.allergens || null,
                 
                 product_category_id: parseInt(productData.product_category_id),
-                shop_id: parseInt(productData.shop_id),
+                shop_id: parseInt(+shop_id),
 
                 tax_id: productData.tax_id ? parseInt(productData.tax_id) : null,
                 discount_id: productData.discount_id ? parseInt(productData.discount_id) : null,
@@ -138,7 +138,7 @@ export const createProductService = async (productData, file) => new Promise(
                 return reject(error);
             }
             console.error("Error in createProductService:", error);
-            return reject(new CustomError("Failed to create product.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to create product.", INTERNAL_SERVER));
         }
     })
 );
@@ -146,61 +146,67 @@ export const createProductService = async (productData, file) => new Promise(
 export const getAllProductsService = async (queryParams) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
-            const { 
-                shop_id, 
-                category_id, 
-                is_featured, 
-                is_active, 
-                page = 1, 
-                limit = 10, 
-                sortBy = 'created_at', 
-                sortOrder = 'desc',
-                search // for name, sku, barcode
-            } = queryParams;
-
-            const filters = {};
-            if (shop_id) filters.shop_id = parseInt(shop_id);
-            if (category_id) filters.product_category_id = parseInt(category_id);
-            if (is_featured !== undefined) filters.is_featured = Boolean(JSON.parse(is_featured));
-            if (is_active !== undefined) filters.is_active = Boolean(JSON.parse(is_active));
-
-            if (search) {
-                filters.OR = [
-                    { name: { contains: search, mode: 'insensitive' } },
-                    { sku_number: { contains: search, mode: 'insensitive' } },
-                    { barcode: { contains: search, mode: 'insensitive' } }
-                ];
-            }
-            
             const products = await prisma.products.findMany({
-                where: filters,
                 include: {
-                    product_category: true,
-                    tax: true,
-                    discount: true,
-                    shop: true,
-                },
-                orderBy: {
-                    [sortBy]: sortOrder
-                },
-                skip: (parseInt(page) - 1) * parseInt(limit),
-                take: parseInt(limit)
-            });
-
-            const totalProducts = await prisma.products.count({ where: filters });
-            
-            return resolve({
-                data: products,
-                meta: {
-                    total: totalProducts,
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    totalPages: Math.ceil(totalProducts / parseInt(limit))
+                    product_category: true
                 }
-            });
+            })
+            return resolve(products);
+            // const { 
+            //     shop_id, 
+            //     category_id, 
+            //     is_featured, 
+            //     is_active, 
+            //     page = 1, 
+            //     limit = 10, 
+            //     sortBy = 'created_at', 
+            //     sortOrder = 'desc',
+            //     search // for name, sku, barcode
+            // } = queryParams;
+
+            // const filters = {};
+            // if (shop_id) filters.shop_id = parseInt(shop_id);
+            // if (category_id) filters.product_category_id = parseInt(category_id);
+            // if (is_featured !== undefined) filters.is_featured = Boolean(JSON.parse(is_featured));
+            // if (is_active !== undefined) filters.is_active = Boolean(JSON.parse(is_active));
+
+            // if (search) {
+            //     filters.OR = [
+            //         { name: { contains: search, mode: 'insensitive' } },
+            //         { sku_number: { contains: search, mode: 'insensitive' } },
+            //         { barcode: { contains: search, mode: 'insensitive' } }
+            //     ];
+            // }
+            
+            // const products = await prisma.products.findMany({
+            //     where: filters,
+            //     include: {
+            //         product_category: true,
+            //         tax: true,
+            //         discount: true,
+            //         shop: true,
+            //     },
+            //     orderBy: {
+            //         [sortBy]: sortOrder
+            //     },
+            //     skip: (parseInt(page) - 1) * parseInt(limit),
+            //     take: parseInt(limit)
+            // });
+
+            // const totalProducts = await prisma.products.count({ where: filters });
+            
+            // return resolve({
+            //     data: products,
+            //     meta: {
+            //         total: totalProducts,
+            //         page: parseInt(page),
+            //         limit: parseInt(limit),
+            //         totalPages: Math.ceil(totalProducts / parseInt(limit))
+            //     }
+            // });
         } catch (error) {
             console.error("Error in getAllProductsService:", error);
-            return reject(new CustomError("Failed to retrieve products.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to retrieve products.", INTERNAL_SERVER));
         }
     })
 );
@@ -214,11 +220,11 @@ export const getProductByIdService = async (productId) => new Promise(
                 where: { id: parseInt(productId) },
                 include: {
                     product_category: true,
-                    tax: true,
+                    // tax: true,
                     discount: true,
                     shop: true,
-                    modifier_groups: { include: { modifiers: true } }, // Example of deeper include
-                    addon_groups: { include: { addons: true } }       // Example of deeper include
+                    // modifier_groups: { include: { modifiers: true } }, // Example of deeper include
+                    // addon_groups: { include: { addons: true } }       // Example of deeper include
                 }
             });
 
@@ -231,7 +237,7 @@ export const getProductByIdService = async (productId) => new Promise(
                 return reject(error);
             }
             console.error("Error in getProductByIdService:", error);
-            return reject(new CustomError("Failed to retrieve product.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to retrieve product.", INTERNAL_SERVER));
         }
     })
 );
@@ -333,7 +339,7 @@ export const updateProductService = async (productId, updateData, file) => new P
                 return reject(error);
             }
             console.error("Error in updateProductService:", error);
-            return reject(new CustomError("Failed to update product.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to update product.", INTERNAL_SERVER));
         }
     })
 );
@@ -372,7 +378,7 @@ export const deleteProductService = async (productId) => new Promise(
             if (error.code === 'P2014' || error.code === 'P2003') { // P2003 is foreign key constraint failed on delete
                  return reject(new CustomError("Cannot delete product. It is referenced by other records (e.g., orders, modifiers).", BAD_REQUEST));
             }
-            return reject(new CustomError("Failed to delete product.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to delete product.", INTERNAL_SERVER));
         }
     })
 );

@@ -1,8 +1,41 @@
-import prisma, { Prisma } from "../lib/prisma.js";
+import { BAD_REQUEST, NOT_FOUND, INTERNAL_SERVER, CONFLICT } from "../lib/status_codes.js";
 import CustomError from "../utils/custom_error.js";
-import { BAD_REQUEST, NOT_FOUND, INTERNAL_SERVER_ERROR, CONFLICT } from "../utils/status_codes.js";
-import promiseAsyncWrapper from "../utils/wrappers/promise_async_wrapper.js";
-import Validator from "../utils/validator.js";
+import prisma from "../lib/prisma.js";
+import promiseAsyncWrapper from "../lib/wrappers/promise_async_wrapper.js";
+import Validator from "../lib/validator.js";
+import path from 'path';
+import fs from 'fs/promises'; // For checking if old file exists before deleting
+
+// Import QR code generation utilities
+import {
+    generateDeskQrContent,
+    generateAndSaveQrWithLabel,
+    generateDeskQrFilename,
+    deleteQrCodeFile
+} from "./qrcode_service.js"; // Adjust path as needed
+
+// --- Configuration for QR Code Paths ---
+// Absolute path to your public directory. Adjust if your project structure is different.
+const PUBLIC_DIR_ABSOLUTE = path.resolve(process.cwd(), 'public');
+// Relative path for QR codes within the public directory.
+const QR_CODES_DIR_RELATIVE = 'qrcodes';
+// Absolute path to the QR codes directory.
+const QR_CODES_DIR_ABSOLUTE = path.join(PUBLIC_DIR_ABSOLUTE, QR_CODES_DIR_RELATIVE);
+// Base URL of your application, used for constructing full QR code image URLs.
+// IMPORTANT: Set this in your .env file (e.g., APP_BASE_URL=http://localhost:3000)
+const APP_BASE_URL = process.env.APP_BASE_URL || 'http://localhost:3000';
+
+if (!process.env.APP_BASE_URL) {
+    console.warn("WARN: APP_BASE_URL environment variable is not set. QR code URLs might be incorrect. Defaulting to http://localhost:3000");
+}
+// --- End Configuration ---
+
+
+const constructQrCodeUrl = (relativePath) => {
+    if (!relativePath) return null;
+    // Ensure no double slashes if APP_BASE_URL ends with / and relativePath starts with /
+    return `${APP_BASE_URL.replace(/\/$/, '')}/${relativePath.replace(/^\//, '')}`;
+};
 
 // --- Helper Parsers (can be moved to a common utility if used across many services) ---
 const parseIntOrNull = (value) => {
@@ -45,7 +78,6 @@ export const createDeskService = async (deskData) => new Promise(
         try {
             await Validator.validateNotNull({
                 desk_number: deskData.desk_number,
-                qrcode: deskData.qrcode,
                 branch_id: deskData.branch_id,
             });
 
@@ -53,25 +85,47 @@ export const createDeskService = async (deskData) => new Promise(
             const branchId = parseInt(deskData.branch_id);
 
             await Validator.isNumber(deskNumber);
-            await Validator.isText(deskData.qrcode);
+            // await Validator.isText(deskData.qrcode);
             await Validator.isNumber(branchId);
+
+            console.log(deskNumber);
+            console.log(branchId);
+            
 
             // Check for uniqueness
             const existingDeskByNumber = await prisma.desks.findUnique({ where: { desk_number: deskNumber } });
             if (existingDeskByNumber) {
                 return reject(new CustomError(`Desk with number ${deskNumber} already exists.`, CONFLICT));
             }
-            const existingDeskByQrcode = await prisma.desks.findUnique({ where: { qrcode: deskData.qrcode } });
-            if (existingDeskByQrcode) {
-                return reject(new CustomError(`Desk with QR code ${deskData.qrcode} already exists.`, CONFLICT));
-            }
+            // Generate QR code content
+            // const qrCodeContent = generateDeskQrContent(branchId, deskNumber);
 
+            // // Check for uniqueness of the generated QR code content
+            // const existingDeskByGeneratedQrcode = await prisma.desks.findUnique({ where: { qrcode: qrCodeContent } });
+            // if (existingDeskByGeneratedQrcode) {
+            //     return reject(new CustomError(`Generated QR code '${qrCodeContent}' already exists. This implies a conflict or that the (branchId, deskNumber) pair leads to a duplicate QR identifier.`, CONFLICT));
+            // }
+
+
+            
             // Validate relations
             const branchExists = await prisma.branches.findUnique({ where: { id: branchId } });
             if (!branchExists) {
                 return reject(new CustomError(`Branch with ID ${branchId} not found.`, NOT_FOUND));
             }
 
+            // Generate QR code details
+            const qrCodeContent = generateDeskQrContent(branchId, deskNumber);
+            const qrCodeFilename = generateDeskQrFilename(branchId, deskNumber);
+            const qrCodeRelativePath = path.join(QR_CODES_DIR_RELATIVE, qrCodeFilename);
+            const qrCodeAbsoluteSavePath = path.join(QR_CODES_DIR_ABSOLUTE, qrCodeFilename);
+
+            // Check if this QR code file path is already in use
+            const existingDeskByQrPath = await prisma.desks.findUnique({ where: { qrcode: qrCodeRelativePath } });
+            if (existingDeskByQrPath) {
+                return reject(new CustomError(`A QR code file named '${qrCodeFilename}' already exists for another desk. This might indicate a duplicate desk_number and branch_id combination.`, CONFLICT));
+            }
+            
             let shopId = null;
             if (deskData.shop_id) {
                 shopId = parseInt(deskData.shop_id);
@@ -99,11 +153,13 @@ export const createDeskService = async (deskData) => new Promise(
             if (deskData.maintenance_notes) await Validator.isText(deskData.maintenance_notes);
             if (deskData.number_of_seats) await Validator.isNumber(parseInt(deskData.number_of_seats));
 
+            // Generate and save the QR code image file
+            await generateAndSaveQrWithLabel(qrCodeContent, "ORBISQ", qrCodeAbsoluteSavePath);
 
             const dataToCreate = {
                 desk_number: deskNumber,
                 number_of_seats: deskData.number_of_seats ? parseInt(deskData.number_of_seats) : 2,
-                qrcode: deskData.qrcode,
+                qrcode: qrCodeRelativePath, 
                 name: deskData.name || null,
                 section: deskData.section || "main",
                 floor: deskData.floor ? parseInt(deskData.floor) : 1,
@@ -134,7 +190,7 @@ export const createDeskService = async (deskData) => new Promise(
             if (error.code === 'P2002') { // Unique constraint violation
                  return reject(new CustomError(`Desk creation failed due to unique constraint. Check desk_number or qrcode.`, CONFLICT));
             }
-            return reject(new CustomError("Failed to create desk.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to create desk.", INTERNAL_SERVER));
         }
     })
 );
@@ -142,70 +198,74 @@ export const createDeskService = async (deskData) => new Promise(
 export const getAllDesksService = async (queryParams) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
-            const {
-                shop_id,
-                branch_id,
-                status,
-                section,
-                floor,
-                has_outlets,
-                is_wheelchair_accessible,
-                page = 1,
-                limit = 10,
-                sortBy = 'created_at',
-                sortOrder = 'desc',
-                search // for name or desk_number
-            } = queryParams;
+            // const {
+            //     shop_id,
+            //     branch_id,
+            //     status,
+            //     section,
+            //     floor,
+            //     has_outlets,
+            //     is_wheelchair_accessible,
+            //     page = 1,
+            //     limit = 10,
+            //     sortBy = 'created_at',
+            //     sortOrder = 'desc',
+            //     search // for name or desk_number
+            // } = queryParams;
 
-            const filters = {};
-            if (shop_id) filters.shop_id = parseInt(shop_id);
-            if (branch_id) filters.branch_id = parseInt(branch_id);
-            if (status) {
-                await Validator.isEnum(status, DESK_STATUS_ENUM);
-                filters.status = status;
-            }
-            if (section) filters.section = section;
-            if (floor) filters.floor = parseInt(floor);
-            if (has_outlets !== undefined) filters.has_outlets = parseBoolean(has_outlets);
-            if (is_wheelchair_accessible !== undefined) filters.is_wheelchair_accessible = parseBoolean(is_wheelchair_accessible);
+            // const filters = {};
+            // if (shop_id) filters.shop_id = parseInt(shop_id);
+            // if (branch_id) filters.branch_id = parseInt(branch_id);
+            // if (status) {
+            //     await Validator.isEnum(status, DESK_STATUS_ENUM);
+            //     filters.status = status;
+            // }
+            // if (section) filters.section = section;
+            // if (floor) filters.floor = parseInt(floor);
+            // if (has_outlets !== undefined) filters.has_outlets = parseBoolean(has_outlets);
+            // if (is_wheelchair_accessible !== undefined) filters.is_wheelchair_accessible = parseBoolean(is_wheelchair_accessible);
 
 
-            if (search) {
-                filters.OR = [
-                    { name: { contains: search, mode: 'insensitive' } },
-                ];
-                if (!isNaN(parseInt(search))) {
-                    filters.OR.push({ desk_number: parseInt(search) });
-                }
-            }
+            // if (search) {
+            //     filters.OR = [
+            //         { name: { contains: search, mode: 'insensitive' } },
+            //     ];
+            //     if (!isNaN(parseInt(search))) {
+            //         filters.OR.push({ desk_number: parseInt(search) });
+            //     }
+            // }
 
-            const desks = await prisma.desks.findMany({
-                where: filters,
-                include: {
-                    shop: true,
-                    branch: true,
-                    discount: true,
-                },
-                orderBy: { [sortBy]: sortOrder },
-                skip: (parseInt(page) - 1) * parseInt(limit),
-                take: parseInt(limit),
-            });
+            // const desks = await prisma.desks.findMany({
+            //     where: filters,
+            //     include: {
+            //         shop: true,
+            //         branch: true,
+            //         discount: true,
+            //     },
+            //     orderBy: { [sortBy]: sortOrder },
+            //     skip: (parseInt(page) - 1) * parseInt(limit),
+            //     take: parseInt(limit),
+            // });
 
-            const totalDesks = await prisma.desks.count({ where: filters });
+            // const totalDesks = await prisma.desks.count({ where: filters });
 
-            return resolve({
-                data: desks,
-                meta: {
-                    total: totalDesks,
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    totalPages: Math.ceil(totalDesks / parseInt(limit)),
-                },
-            });
+            // return resolve({
+            //     data: desks,
+            //     meta: {
+            //         total: totalDesks,
+            //         page: parseInt(page),
+            //         limit: parseInt(limit),
+            //         totalPages: Math.ceil(totalDesks / parseInt(limit)),
+            //     },
+            // });
+
+            const desks = await prisma.desks.findMany({})
+
+            return resolve(desks)
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error in getAllDesksService:", error);
-            return reject(new CustomError("Failed to retrieve desks.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to retrieve desks.", INTERNAL_SERVER));
         }
     })
 );
@@ -232,7 +292,7 @@ export const getDeskByIdService = async (deskId) => new Promise(
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error in getDeskByIdService:", error);
-            return reject(new CustomError("Failed to retrieve desk.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to retrieve desk.", INTERNAL_SERVER));
         }
     })
 );
@@ -337,7 +397,7 @@ export const updateDeskService = async (deskId, updateData) => new Promise(
              if (error.code === 'P2002') {
                  return reject(new CustomError(`Update failed due to unique constraint. Check desk_number or qrcode.`, CONFLICT));
             }
-            return reject(new CustomError("Failed to update desk.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to update desk.", INTERNAL_SERVER));
         }
     })
 );
@@ -369,7 +429,35 @@ export const deleteDeskService = async (deskId) => new Promise(
             if (error.code === 'P2003') { // Foreign key constraint failed
                  return reject(new CustomError("Cannot delete desk. It is referenced by other records.", BAD_REQUEST));
             }
-            return reject(new CustomError("Failed to delete desk.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to delete desk.", INTERNAL_SERVER));
         }
     })
 );
+
+
+export const updateDeskStatusService = async (deskId, updateData) => new Promise(
+    promiseAsyncWrapper(async (resolve, reject) => {
+        try {
+            const id = parseInt(deskId);
+            await Validator.isNumber(id);
+
+            const existingDesk = await prisma.desks.findUnique({ where: { id } });
+            if (!existingDesk) {
+                return reject(new CustomError(`Desk with ID ${id} not found to update status.`, NOT_FOUND));
+            }
+
+            await Validator.isEnum(updateData.status, DESK_STATUS_ENUM);
+            
+            const updatedDesk = await prisma.desks.update({
+                where: { id },
+                data: { status: updateData.status },
+            });
+            return resolve(updatedDesk);
+
+        } catch (error) {
+            if (error instanceof CustomError) return reject(error);
+            console.error("Error in updateDeskStatusService:", error);
+            return reject(new CustomError("Failed to update desk status.", INTERNAL_SERVER));
+        }
+    })
+)

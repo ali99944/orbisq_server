@@ -1,16 +1,16 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { JWT_SECRET, JWT_EXPIRES_IN } from '../config.js';
-import { BAD_REQUEST } from '../lib/status_codes.js';
+import { BAD_REQUEST, NOT_AUTHORIZED } from '../lib/status_codes.js';
 import CustomError from '../utils/custom_error.js';
 import Validator from '../lib/validator.js';
 import promiseAsyncWrapper from '../lib/wrappers/promise_async_wrapper.js';
 import prisma from '../lib/prisma.js';
+import { json_web_token_expires_in, json_web_token_key } from '../lib/configs.js';
 
 const SALT_ROUNDS = 10;
 
 export const createShopAccessPortal = async (shopId, portalData) => new Promise(
-    promiseAsyncWrapper(async (resolve, reject) => {
+    promiseAsyncWrapper(async (resolve) => {
         // Validate required fields
         await Validator.validateNotNull({
             username: portalData.username,
@@ -19,7 +19,7 @@ export const createShopAccessPortal = async (shopId, portalData) => new Promise(
 
         // Check if shop exists
         const shop = await prisma.shops.findUnique({
-            where: { id: shopId }
+            where: { id: +shopId }
         });
 
         if (!shop) {
@@ -43,7 +43,7 @@ export const createShopAccessPortal = async (shopId, portalData) => new Promise(
             data: {
                 username: portalData.username,
                 password: hashedPassword,
-                shop_id: shopId,
+                shop_id: +shopId,
                 permissions: portalData.permissions || {}
             }
         });
@@ -58,27 +58,42 @@ export const loginShopPortal = async (username, password) => new Promise(
 
         const portal = await prisma.shop_access_portal.findUnique({
             where: { username },
-            include: { shop: true }
+            include: {
+                shop: {
+                    include: {
+                        currency_info: true,
+                        business_info: true,
+                        shop_theme: true,
+                        shop_owner: true,
+                        address: true,
+                        contact_info: true,
+                        social_links: true,
+                        access_portal: true
+                    }
+                }
+            }
         });
 
         if (!portal) {
-            throw new CustomError('Invalid credentials', UNAUTHORIZED);
+            throw new CustomError('Invalid credentials', NOT_AUTHORIZED);
         }
 
         if (!portal.is_active) {
-            throw new CustomError('Portal account is not active', UNAUTHORIZED);
+            throw new CustomError('Portal account is not active', NOT_AUTHORIZED);
         }
 
         const passwordMatch = await bcrypt.compare(password, portal.password);
         if (!passwordMatch) {
-            throw new CustomError('Invalid credentials', UNAUTHORIZED);
+            throw new CustomError('Invalid credentials', NOT_AUTHORIZED);
         }
 
         // Generate JWT token
         const token = jwt.sign(
             { id: portal.id, shop_id: portal.shop_id, type: 'portal' },
-            JWT_SECRET,
-            { expiresIn: JWT_EXPIRES_IN }
+            json_web_token_key,
+            {
+                expiresIn: '30d'
+            }
         );
 
         // Update last login
@@ -92,7 +107,7 @@ export const loginShopPortal = async (username, password) => new Promise(
             data: {
                 token,
                 portal_id: portal.id,
-                expires_at: new Date(Date.now() + JWT_EXPIRES_IN * 1000)
+                expires_at: new Date(Date.now() + parseInt(json_web_token_expires_in) * 1000)
             }
         });
 
@@ -100,7 +115,7 @@ export const loginShopPortal = async (username, password) => new Promise(
             portal: {
                 id: portal.id,
                 username: portal.username,
-                shop_id: portal.shop_id,
+                shop: portal.shop,
                 shop_name: portal.shop.name,
                 permissions: portal.permissions
             },
@@ -112,10 +127,10 @@ export const loginShopPortal = async (username, password) => new Promise(
 export const verifyPortalToken = async (token) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
-            const decoded = jwt.verify(token, JWT_SECRET);
+            const decoded = jwt.verify(token, json_web_token_key);
             
             if (decoded.type !== 'portal') {
-                throw new CustomError('Invalid token type', UNAUTHORIZED);
+                throw new CustomError('Invalid token type', NOT_AUTHORIZED);
             }
 
             // Check if token exists in database
@@ -135,7 +150,7 @@ export const verifyPortalToken = async (token) => new Promise(
             });
 
             if (!accessToken) {
-                throw new CustomError('Token expired or invalid', UNAUTHORIZED);
+                throw new CustomError('Token expired or invalid', NOT_AUTHORIZED);
             }
 
             // Update last used at
@@ -150,7 +165,9 @@ export const verifyPortalToken = async (token) => new Promise(
                 permissions: accessToken.portal.permissions
             });
         } catch (error) {
-            throw new CustomError('Invalid token', UNAUTHORIZED);
+            console.log(error);
+            
+            throw new CustomError('Invalid token', NOT_AUTHORIZED);
         }
     })
 );

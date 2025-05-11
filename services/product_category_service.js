@@ -10,12 +10,12 @@ export const createCategory = async (categoryData, imagePath) => new Promise(
         // Validate required fields
         await Validator.validateNotNull({
             name: categoryData.name,
-            shop_id: categoryData.shop_id
+            shop_id: +categoryData.shop_id
         });
 
         // Check if shop exists
         const shopExists = await prisma.shops.findUnique({
-            where: { id: categoryData.shop_id }
+            where: { id: +categoryData.shop_id }
         });
 
         if (!shopExists) {
@@ -33,7 +33,7 @@ export const createCategory = async (categoryData, imagePath) => new Promise(
         const existingCategory = await prisma.product_categories.findFirst({
             where: {
                 slug: categoryData.slug,
-                shop_id: categoryData.shop_id
+                shop_id: +categoryData.shop_id
             }
         });
 
@@ -53,10 +53,10 @@ export const createCategory = async (categoryData, imagePath) => new Promise(
                 description: categoryData.description,
                 image: imagePath,
                 reference_code: categoryData.reference_code,
-                is_active: categoryData.is_active || false,
+                is_active: !!+categoryData.is_active || false,
                 sort_order: categoryData.sort_order || 0,
                 slug: categoryData.slug,
-                shop_id: categoryData.shop_id
+                shop_id: +categoryData.shop_id
             }
         });
 
@@ -94,7 +94,7 @@ export const updateCategory = async (categoryId, updateData, imagePath) => new P
         const updatePayload = {
             name: updateData.name,
             description: updateData.description,
-            is_active: updateData.is_active,
+            is_active: updateData.is_active == 1,
             sort_order: updateData.sort_order,
             slug: updateData.slug
         };
@@ -159,35 +159,41 @@ export const getCategoryBySlug = async (slug, shopId) => new Promise(
 
 export const getShopCategories = async (shopId, filters = {}) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
-        const { activeOnly = true, sortBy = 'sort_order', sortDirection = 'asc' } = filters;
+        // const { activeOnly = true, sortBy = 'sort_order', sortDirection = 'asc' } = filters;
 
-        const where = {
-            shop_id: shopId
-        };
+        // const where = {
+        //     shop_id: shopId
+        // };
 
-        if (activeOnly) {
-            where.is_active = true;
-        }
+        // if (activeOnly) {
+        //     where.is_active = true;
+        // }
+
+        // const categories = await prisma.product_categories.findMany({
+        //     where,
+        //     include: {
+        //         _count: {
+        //             select: { products: true }
+        //         }
+        //     },
+        //     orderBy: {
+        //         [sortBy]: sortDirection
+        //     }
+        // });
+
+        // // Map to include product count
+        // const result = categories.map(category => ({
+        //     ...category,
+        //     total_products: category._count.products
+        // }));
 
         const categories = await prisma.product_categories.findMany({
-            where,
-            include: {
-                _count: {
-                    select: { products: true }
-                }
+            where: {
+                shop_id: shopId
             },
-            orderBy: {
-                [sortBy]: sortDirection
-            }
         });
 
-        // Map to include product count
-        const result = categories.map(category => ({
-            ...category,
-            total_products: category._count.products
-        }));
-
-        return resolve(result);
+        return resolve(categories);
     })
 );
 

@@ -1,3 +1,5 @@
+import { CREATED } from "../lib/status_codes.js";
+import asyncWrapper from "../lib/wrappers/async_wrapper.js";
 import {
     createProductService,
     getAllProductsService,
@@ -5,14 +7,12 @@ import {
     updateProductService,
     deleteProductService
 } from "../services/product_service.js";
-import asyncWrapper from "../utils/wrappers/async_wrapper.js"; // Assuming your asyncWrapper is here
-import { CREATED } from "../utils/status_codes.js";
 
 export const createProductController = asyncWrapper(
     async (req, res) => {
-        // req.body will contain text fields
-        // req.file will contain the uploaded image (if using multer with .single('image'))
-        const product = await createProductService(req.body, req.file);
+        
+        const shop_id = +req.portal.shopId;
+        const product = await createProductService(req.body, req.file, shop_id);
         return res.status(CREATED).json(product);
     }
 );

@@ -30,36 +30,22 @@ export const createShop = async (shopData) => new Promise(
         // Create shop with all related data in a transaction
         const shop = await prisma.$transaction(async (prisma) => {
             // Create address if provided
-            let address;
-            if (shopData.address) {
-                address = await prisma.addresses.create({
-                    data: {
-                        ...shopData.address,
-                        country: shopData.address.country || 'Egypt'
-                    }
-                });
-            }
+            const address = await prisma.addresses.create({
+                data: {}
+            });
 
             // Create contact info if provided
-            let contactInfo;
-            if (shopData.contact_info) {
-                contactInfo = await prisma.contact_infos.create({
-                    data: shopData.contact_info
-                });
-            }
+            const contactInfo = await prisma.contact_infos.create({
+                data: {}
+            });
 
             // Create social links if provided
-            let socialLinks;
-            if (shopData.social_links) {
-                socialLinks = await prisma.social_links.create({
-                    data: shopData.social_links
-                });
-            }
+            const socialLinks = await prisma.social_links.create({
+                data: {}
+            });
 
-            // Create currency info (required)
             const currencyInfo = await prisma.currency_infos.create({
                 data: {
-                    ...shopData.currency_info,
                     currency: shopData.currency_info?.currency || 'LE',
                     currency_symbol: shopData.currency_info?.currency_symbol || 'L.E',
                     currency_code: shopData.currency_info?.currency_code || 'EGP'
@@ -68,10 +54,7 @@ export const createShop = async (shopData) => new Promise(
 
             // Create business info (required)
             const businessInfo = await prisma.business_infos.create({
-                data: {
-                    ...shopData.business_info,
-                    vat_type: shopData.business_info?.vat_type || 'inclusive'
-                }
+                data: {}
             });
 
             // Create shop theme (required)
@@ -98,6 +81,8 @@ export const createShop = async (shopData) => new Promise(
                     language: shopData.language || 'ar-EG',
                     payment_methods: shopData.payment_methods || [],
                     fulfillment_types: shopData.fulfillment_types || ['dine-in'],
+
+                    shop_owner_id: +shopData.shop_owner_id,
                     
                     // Relations
                     address_id: address?.id,
@@ -231,7 +216,11 @@ export const getShopById = async (shopId) => new Promise(
                 business_info: true,
                 shop_theme: true,
                 categories: true,
-                products: true,
+                products: {
+                    include: {
+                        product_category: true
+                    }
+                },
                 discounts: true,
                 desks: true,
                 branches: true
@@ -305,7 +294,10 @@ export const getAllShops = async (filters = {}) => new Promise(
                 address: true,
                 contact_info: true,
                 currency_info: true,
-                business_info: true
+                business_info: true,
+                shop_owner: true,
+                shop_theme: true,
+                social_links: true
             },
             orderBy: { created_at: 'desc' }
         });
@@ -325,7 +317,8 @@ export const deleteShop = async (shopId) => new Promise(
                 social_links: true,
                 currency_info: true,
                 business_info: true,
-                shop_theme: true
+                shop_theme: true,
+                shop_owner: true
             }
         });
 

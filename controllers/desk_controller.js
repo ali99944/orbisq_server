@@ -1,12 +1,13 @@
+import { CREATED } from "../lib/status_codes.js";
+import asyncWrapper from "../lib/wrappers/async_wrapper.js";
 import {
     createDeskService,
     getAllDesksService,
     getDeskByIdService,
     updateDeskService,
-    deleteDeskService
+    deleteDeskService,
+    updateDeskStatusService
 } from "../services/desk_service.js";
-import asyncWrapper from "../utils/wrappers/async_wrapper.js";
-import { CREATED } from "../utils/status_codes.js";
 
 export const createDeskController = asyncWrapper(
     async (req, res) => {
@@ -45,3 +46,11 @@ export const deleteDeskController = asyncWrapper(
         return res.json(result);
     }
 );
+
+export const updateDeskStatusController = asyncWrapper(
+    async (req, res) => {
+        const { id } = req.params;
+        const updatedDesk = await updateDeskStatusService(id, req.body);
+        return res.json(updatedDesk);
+    }
+)

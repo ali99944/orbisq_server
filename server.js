@@ -37,11 +37,14 @@ const main = async () => {
             (await import('./routes/shop_owner_route.js')).default,
             (await import('./routes/shop_route.js')).default,
             (await import('./routes/categories_route.js')).default,
-            // (await import('./routes/shop_access_portal_route.js')).default,
-            // (await import('./routes/product_route.js')).default,
-            // (await import('./routes/order_route.js')).default,
-            // (await import('./routes/coupon_route.js')).default,
+            (await import('./routes/shop_access_portal_route.js')).default,
+            (await import('./routes/product_route.js')).default,
+            (await import('./routes/order_route.js')).default,
+            (await import('./routes/coupon_route.js')).default,
             // (await import('./routes/discount_route.js')).default,
+            (await import('./routes/desk_route.js')).default,
+            (await import('./routes/branch_route.js')).default,
+            // (await import('./routes/order_route.js')).default,
 
         )
 

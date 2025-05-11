@@ -11,11 +11,11 @@ model shops {
     contact_info_id Int?           @unique
     social_links    social_links?  @relation(fields: [social_links_id], references: [id])
     social_links_id Int?           @unique
-    currency_info   currency_infos @relation(fields: [currency_info_id], references: [id])
+    currency_info   currency_infos? @relation(fields: [currency_info_id], references: [id])
     currency_info_id Int           @unique
-    business_info   business_infos @relation(fields: [business_info_id], references: [id])
+    business_info   business_infos? @relation(fields: [business_info_id], references: [id])
     business_info_id Int           @unique
-    shop_theme   shop_theme @relation(fields: [shop_theme_id], references: [id])
+    shop_theme   shop_theme? @relation(fields: [shop_theme_id], references: [id])
     shop_theme_id Int           @unique
     status          shop_status    @default(active)
     orders_count    Int            @default(0)

@@ -1,11 +1,13 @@
-import prisma, { Prisma } from "../lib/prisma.js";
+import { BAD_REQUEST, NOT_FOUND, INTERNAL_SERVER, CONFLICT } from "../lib/status_codes.js";
+import { parseIntOrNull, parseFloatOrNull, parseDateOrNull, parseDecimalOrNull } from "../lib/parser.js"; // Adjust path
+// import { generateOrderNumber } from "../utils/generateOrderNumbergenerators.js"; // Adjust path
+import { ACTIVE_ORDER_STATUSES, ORDER_STATUS_ENUM, ORDER_TYPE_ENUM, PAYMENT_METHOD_ENUM, PAYMENT_STATUS_ENUM, ITEM_STATUS_ENUM } from "../lib/constants.js"; // Adjust path
+import { generateOrderNumber } from "../lib/generator.js";
+import Validator from "../lib/validator.js";
+import promiseAsyncWrapper from "../lib/wrappers/promise_async_wrapper.js";
 import CustomError from "../utils/custom_error.js";
-import { BAD_REQUEST, NOT_FOUND, INTERNAL_SERVER_ERROR, CONFLICT } from "../utils/status_codes.js";
-import promiseAsyncWrapper from "../utils/wrappers/promise_async_wrapper.js";
-import Validator from "../utils/validator.js";
-import { parseIntOrNull, parseFloatOrNull, parseBoolean, parseDateOrNull, parseDecimalOrNull } from "../utils/parsers.js"; // Adjust path
-import { generateOrderNumber } from "../utils/generators.js"; // Adjust path
-import { ACTIVE_ORDER_STATUSES, ORDER_STATUS_ENUM, ORDER_TYPE_ENUM, PAYMENT_METHOD_ENUM, PAYMENT_STATUS_ENUM, ITEM_STATUS_ENUM } from "../utils/constants.js"; // Adjust path
+import { Prisma } from "@prisma/client";
+import prisma from "../lib/prisma.js";
 
 
 // --- Internal Helper Functions ---
@@ -24,19 +26,19 @@ const calculateOrderTotals = (items, taxAmount = 0, discountAmount = 0, serviceC
     const subtotal = items.reduce((sum, item) => {
         // Assuming item.total_price is (item.quantity * item.unit_price)
         // If item-specific discounts are applied to item.total_price, this is fine.
-        return sum.add(new Prisma.Decimal(item.total_price));
-    }, new Prisma.Decimal(0));
+        return sum + item.total_price;
+    }, 0);
 
-    const finalTaxAmount = new Prisma.Decimal(taxAmount);
-    const finalDiscountAmount = new Prisma.Decimal(discountAmount);
-    const finalServiceCharge = new Prisma.Decimal(serviceCharge || 0);
-    const finalTipAmount = new Prisma.Decimal(tipAmount || 0);
+    const finalTaxAmount = taxAmount;
+    const finalDiscountAmount = discountAmount;
+    const finalServiceCharge = serviceCharge || 0;
+    const finalTipAmount = tipAmount || 0;
 
     const total = subtotal
-        .add(finalTaxAmount)
-        .sub(finalDiscountAmount)
-        .add(finalServiceCharge)
-        .add(finalTipAmount);
+        + finalTaxAmount
+        - finalDiscountAmount
+        + finalServiceCharge
+        + finalTipAmount;
 
     return {
         subtotal: subtotal,
@@ -110,12 +112,12 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                 waiter_id: orderInput.waiter_id ? parseInt(orderInput.waiter_id) : null,
                 chef_id: orderInput.chef_id ? parseInt(orderInput.chef_id) : null,
                 
-                subtotal: new Prisma.Decimal(0), // Initial
-                tax_amount: parseDecimalOrNull(orderInput.tax_amount) || new Prisma.Decimal(0),
-                discount_amount: parseDecimalOrNull(orderInput.discount_amount) || new Prisma.Decimal(0),
+                subtotal: 0, // Initial
+                tax_amount: parseDecimalOrNull(orderInput.tax_amount) || 0,
+                discount_amount: parseDecimalOrNull(orderInput.discount_amount) || 0,
                 service_charge: parseDecimalOrNull(orderInput.service_charge),
                 tip_amount: parseDecimalOrNull(orderInput.tip_amount),
-                total: new Prisma.Decimal(0), // Initial
+                total: 0, // Initial
 
                 payment_status: orderInput.payment_status || 'unpaid',
                 payment_method: orderInput.payment_method || null,
@@ -139,7 +141,7 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                 const createdOrder = await tx.orders.create({ data: newOrderData });
 
                 const createdItems = [];
-                let runningSubtotal = new Prisma.Decimal(0);
+                let runningSubtotal = 0;
 
                 for (const itemInput of itemsInput) {
                     await Validator.validateNotNull({ product_id: itemInput.product_id, quantity: itemInput.quantity });
@@ -153,9 +155,9 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                     if (!product) throw new CustomError(`Product with ID ${productId} not found.`, NOT_FOUND);
                     if (!product.price) throw new CustomError(`Product with ID ${productId} does not have a price.`, BAD_REQUEST);
                     
-                    const unit_price = new Prisma.Decimal(product.price);
-                    const total_price = unit_price.mul(new Prisma.Decimal(quantity));
-                    runningSubtotal = runningSubtotal.add(total_price);
+                    const unit_price = +product.price;
+                    const total_price = unit_price * +quantity;
+                    runningSubtotal = runningSubtotal + total_price;
 
                     const itemData = {
                         order_id: createdOrder.id, // CRITICAL: Assumes order_id is String
@@ -204,7 +206,7 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                 ));
             }
             console.error("Error in createOrderService:", error);
-            return reject(new CustomError("Failed to create order.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to create order.", INTERNAL_SERVER));
         }
     })
 );
@@ -240,7 +242,7 @@ export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateDat
                     const total_price = unit_price.mul(new Prisma.Decimal(quantity));
                     
                     const newItemData = {
-                        order_id: orderId,
+                        order_id: +orderId,
                         product_id: productId,
                         quantity,
                         unit_price,
@@ -285,7 +287,7 @@ export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateDat
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error in addItemsToOrderService:", error);
-            return reject(new CustomError("Failed to add items to order.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to add items to order.", INTERNAL_SERVER));
         }
     })
 );
@@ -294,57 +296,60 @@ export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateDat
 export const getAllOrdersService = async (queryParams) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
-            const {
-                shop_id, customer_id, desk_id, order_type, status,
-                payment_status, page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'desc',
-                search // For order_number
-            } = queryParams;
+            // const {
+            //     shop_id, customer_id, desk_id, order_type, status,
+            //     payment_status, page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'desc',
+            //     search // For order_number
+            // } = queryParams;
 
-            const filters = {};
-            if (shop_id) filters.shop_id = parseInt(shop_id);
-            if (customer_id) filters.customer_id = parseInt(customer_id);
-            if (desk_id) filters.desk_id = parseInt(desk_id);
-            if (order_type) {
-                await Validator.isEnum(order_type, ORDER_TYPE_ENUM);
-                filters.order_type = order_type;
-            }
-            if (status) {
-                await Validator.isEnum(status, ORDER_STATUS_ENUM);
-                filters.status = status;
-            }
-            if (payment_status) {
-                 await Validator.isEnum(payment_status, PAYMENT_STATUS_ENUM);
-                filters.payment_status = payment_status;
-            }
-            if (search) filters.order_number = { contains: search, mode: 'insensitive' };
+            // const filters = {};
+            // if (shop_id) filters.shop_id = parseInt(shop_id);
+            // if (customer_id) filters.customer_id = parseInt(customer_id);
+            // if (desk_id) filters.desk_id = parseInt(desk_id);
+            // if (order_type) {
+            //     await Validator.isEnum(order_type, ORDER_TYPE_ENUM);
+            //     filters.order_type = order_type;
+            // }
+            // if (status) {
+            //     await Validator.isEnum(status, ORDER_STATUS_ENUM);
+            //     filters.status = status;
+            // }
+            // if (payment_status) {
+            //      await Validator.isEnum(payment_status, PAYMENT_STATUS_ENUM);
+            //     filters.payment_status = payment_status;
+            // }
+            // if (search) filters.order_number = { contains: search, mode: 'insensitive' };
 
-            const orders = await prisma.orders.findMany({
-                where: filters,
-                include: {
-                    items: { include: { product: true } }, // product name shown on item
-                    shop: true,
-                    customer: true,
-                    desk: true,
-                },
-                orderBy: { [sortBy]: sortOrder },
-                skip: (parseInt(page) - 1) * parseInt(limit),
-                take: parseInt(limit),
-            });
-            const totalOrders = await prisma.orders.count({ where: filters });
+            // const orders = await prisma.orders.findMany({
+            //     where: filters,
+            //     include: {
+            //         items: { include: { product: true } }, // product name shown on item
+            //         shop: true,
+            //         customer: true,
+            //         desk: true,
+            //     },
+            //     orderBy: { [sortBy]: sortOrder },
+            //     skip: (parseInt(page) - 1) * parseInt(limit),
+            //     take: parseInt(limit),
+            // });
+            // const totalOrders = await prisma.orders.count({ where: filters });
 
-            return resolve({
-                data: orders,
-                meta: {
-                    total: totalOrders,
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    totalPages: Math.ceil(totalOrders / parseInt(limit)),
-                },
-            });
+            // return resolve({
+            //     data: orders,
+            //     meta: {
+            //         total: totalOrders,
+            //         page: parseInt(page),
+            //         limit: parseInt(limit),
+            //         totalPages: Math.ceil(totalOrders / parseInt(limit)),
+            //     },
+            // });
+
+            const orders = await prisma.orders.findMany({})
+            return resolve(orders)
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error in getAllOrdersService:", error);
-            return reject(new CustomError("Failed to retrieve orders.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to retrieve orders.", INTERNAL_SERVER));
         }
     })
 );
@@ -367,7 +372,7 @@ export const getOrderByIdService = async (orderId) => new Promise(
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error in getOrderByIdService:", error);
-            return reject(new CustomError("Failed to retrieve order.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to retrieve order.", INTERNAL_SERVER));
         }
     })
 );
@@ -395,7 +400,7 @@ export const updateOrderStatusService = async (orderId, newStatus, details = {})
                 updateData.cancellation_reason = details.cancellation_reason || "No reason provided";
                 // Optionally, cancel all items
                 await prisma.order_items.updateMany({
-                    where: { order_id: orderId, status: { notIn: ['cancelled', 'served'] } }, // Don't re-cancel
+                    where: { order_id: +orderId, status: { notIn: ['cancelled', 'served'] } }, // Don't re-cancel
                     data: { status: 'cancelled' }
                 });
             }
@@ -417,7 +422,7 @@ export const updateOrderStatusService = async (orderId, newStatus, details = {})
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error in updateOrderStatusService:", error);
-            return reject(new CustomError("Failed to update order status.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to update order status.", INTERNAL_SERVER));
         }
     })
 );
@@ -504,7 +509,7 @@ export const updateOrderGeneralInfoService = async (orderId, updateInput) => new
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error in updateOrderGeneralInfoService:", error);
-            return reject(new CustomError("Failed to update order general information.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to update order general information.", INTERNAL_SERVER));
         }
     })
 );
@@ -556,8 +561,8 @@ export const updateOrderItemService = async (orderItemId, itemUpdateData) => new
             });
 
             if (needsOrderTotalRecalculation) {
-                const orderItems = await prisma.order_items.findMany({ where: { order_id: item.order_id } });
-                const order = await prisma.orders.findUnique({where: {id: item.order_id}}) // fetch fresh order for other amounts
+                const orderItems = await prisma.order_items.findMany({ where: { order_id: +item.order_id } });
+                const order = await prisma.orders.findUnique({where: {id: +item.order_id}}) // fetch fresh order for other amounts
                 const totals = calculateOrderTotals(
                     orderItems,
                     order.tax_amount,
@@ -566,7 +571,7 @@ export const updateOrderItemService = async (orderItemId, itemUpdateData) => new
                     order.tip_amount
                 );
                 await prisma.orders.update({
-                    where: { id: item.order_id },
+                    where: { id: +item.order_id },
                     data: {
                         subtotal: totals.subtotal,
                         total: totals.total,
@@ -575,13 +580,13 @@ export const updateOrderItemService = async (orderItemId, itemUpdateData) => new
                 });
             }
             // Return the full order after item update
-            const fullOrder = await getOrderByIdService(item.order_id);
+            const fullOrder = await getOrderByIdService(+item.order_id);
             return resolve(fullOrder);
 
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error in updateOrderItemService:", error);
-            return reject(new CustomError("Failed to update order item.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to update order item.", INTERNAL_SERVER));
         }
     })
 );
@@ -599,7 +604,7 @@ export const removeOrderItemService = async (orderItemId) => new Promise(
             }
             
             // Check if it's the last item
-            const itemCount = await prisma.order_items.count({ where: { order_id: item.order_id } });
+            const itemCount = await prisma.order_items.count({ where: { order_id: +item.order_id } });
             if (itemCount <= 1) {
                 return reject(new CustomError("Cannot remove the last item from an order. Consider cancelling the order instead.", BAD_REQUEST));
             }
@@ -607,8 +612,8 @@ export const removeOrderItemService = async (orderItemId) => new Promise(
             await prisma.order_items.delete({ where: { id } });
 
             // Recalculate order totals
-            const remainingItems = await prisma.order_items.findMany({ where: { order_id: item.order_id } });
-            const order = await prisma.orders.findUnique({where: {id: item.order_id}}) // fetch fresh order
+            const remainingItems = await prisma.order_items.findMany({ where: { order_id: +item.order_id } });
+            const order = await prisma.orders.findUnique({where: {id: +item.order_id}}) // fetch fresh order
             const totals = calculateOrderTotals(
                 remainingItems,
                 order.tax_amount,
@@ -631,7 +636,7 @@ export const removeOrderItemService = async (orderItemId) => new Promise(
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error in removeOrderItemService:", error);
-            return reject(new CustomError("Failed to remove order item.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to remove order item.", INTERNAL_SERVER));
         }
     })
 );
@@ -661,7 +666,7 @@ export const deleteOrderService = async (orderId) => new Promise(
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error deleting order:", error);
-            return reject(new CustomError("Failed to delete order.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to delete order.", INTERNAL_SERVER));
         }
     })
 );

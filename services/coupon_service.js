@@ -1,15 +1,9 @@
-import prisma, { Prisma } from "../lib/prisma.js";
+import prisma from "../lib/prisma.js";
+import { BAD_REQUEST, NOT_FOUND, INTERNAL_SERVER, CONFLICT } from "../lib/status_codes.js";
 import CustomError from "../utils/custom_error.js";
-import { BAD_REQUEST, NOT_FOUND, INTERNAL_SERVER_ERROR, CONFLICT } from "../utils/status_codes.js";
-import promiseAsyncWrapper from "../utils/wrappers/promise_async_wrapper.js";
-import Validator from "../utils/validator.js";
-import { generateReferenceCode } from "../utils/generators.js"; // If you want to auto-generate coupon codes
-
-// --- Re-using Helper Parsers ---
-const parseIntOrNull = (value) => { /* ... */ };
-const parseDateOrNull = (value) => { /* ... */ };
-const parseBoolean = (value, defaultValue = undefined) => { /* ... */ }; // Defined in desk_service.js
-const parseDecimalOrNull = (value) => { /* ... */ }; // Defined in discount_service.js
+import promiseAsyncWrapper from "../lib/wrappers/promise_async_wrapper.js";
+import Validator from "../lib/validator.js";
+import { parseBoolean, parseDateOrNull, parseDecimalOrNull, parseFloatOrNull, parseIntOrNull } from "../lib/parser.js";
 
 const DISCOUNT_TYPE_ENUM_COUPON = ['percentage', 'fixed_amount_off', 'fixed_price', 'free_shipping']; // Same as discount
 
@@ -36,9 +30,9 @@ export const createCouponService = async (couponData) => new Promise(
 
             await Validator.isText(couponData.code);
             await Validator.isEnum(couponData.discount_type, DISCOUNT_TYPE_ENUM_COUPON);
-            if (isNaN(parseFloat(couponData.discount_value))) return reject(new CustomError("Discount value must be a number.", BAD_REQUEST));
+            if (isNaN(parseFloatOrNull(couponData.discount_value))) return reject(new CustomError("Discount value must be a number.", BAD_REQUEST));
             // start_date and end_date will be validated by parseDateOrNull implicitly
-            const shopId = parseInt(couponData.shop_id);
+            const shopId = parseIntOrNull(couponData.shop_id);
             await Validator.isNumber(shopId);
 
             const existingCode = await prisma.coupons.findUnique({ where: { code: couponData.code } });
@@ -49,16 +43,16 @@ export const createCouponService = async (couponData) => new Promise(
 
             let branchId = null;
             if (couponData.branch_id) {
-                branchId = parseInt(couponData.branch_id);
+                branchId = parseIntOrNull(couponData.branch_id);
                 await Validator.isNumber(branchId);
                 const branchExists = await prisma.branches.findUnique({ where: { id: branchId } });
                 if (!branchExists) return reject(new CustomError(`Branch with ID ${branchId} not found.`, NOT_FOUND));
             }
 
-            if (couponData.min_order_amount) if (isNaN(parseFloat(couponData.min_order_amount))) return reject(new CustomError("Min order amount must be a number.", BAD_REQUEST));
-            if (couponData.max_discount) if (isNaN(parseFloat(couponData.max_discount))) return reject(new CustomError("Max discount must be a number.", BAD_REQUEST));
-            if (couponData.usage_limit) await Validator.isNumber(parseInt(couponData.usage_limit));
-            if (couponData.per_user_limit) await Validator.isNumber(parseInt(couponData.per_user_limit));
+            if (couponData.min_order_amount) if (isNaN(parseFloatOrNull(couponData.min_order_amount))) return reject(new CustomError("Min order amount must be a number.", BAD_REQUEST));
+            if (couponData.max_discount) if (isNaN(parseFloatOrNull(couponData.max_discount))) return reject(new CustomError("Max discount must be a number.", BAD_REQUEST));
+            if (couponData.usage_limit) await Validator.isNumber(parseIntOrNull(couponData.usage_limit));
+            if (couponData.per_user_limit) await Validator.isNumber(parseIntOrNull(couponData.per_user_limit));
 
             // Date validation
             const startDate = parseDateOrNull(couponData.start_date);
@@ -79,7 +73,7 @@ export const createCouponService = async (couponData) => new Promise(
                 end_date: endDate,
                 is_active: parseBoolean(couponData.is_active, true),
                 usage_limit: parseIntOrNull(couponData.usage_limit),
-                per_user_limit: couponData.per_user_limit ? parseInt(couponData.per_user_limit) : 1,
+                per_user_limit: couponData.per_user_limit ? parseIntOrNull(couponData.per_user_limit) : 1,
                 times_used: 0, // Default
                 shop_id: shopId,
                 branch_id: branchId,
@@ -98,7 +92,7 @@ export const createCouponService = async (couponData) => new Promise(
              if (error.code === 'P2002') {
                  return reject(new CustomError(`Coupon code ${couponData.code} already exists.`, CONFLICT));
             }
-            return reject(new CustomError("Failed to create coupon.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to create coupon.", INTERNAL_SERVER));
         }
     })
 );
@@ -119,8 +113,8 @@ export const getAllCouponsService = async (queryParams) => new Promise(
             } = queryParams;
 
             const filters = {};
-            if (shop_id) filters.shop_id = parseInt(shop_id);
-            if (branch_id) filters.branch_id = parseInt(branch_id);
+            if (shop_id) filters.shop_id = parsTparseIntOrNullInt(shop_id);
+            if (branch_id) filters.branch_id = parseITparseIntOrNullt(branch_id);
             if (is_active !== undefined) filters.is_active = parseBoolean(is_active);
             if (discount_type) {
                 await Validator.isEnum(discount_type, DISCOUNT_TYPE_ENUM_COUPON);
@@ -144,8 +138,8 @@ export const getAllCouponsService = async (queryParams) => new Promise(
                 where: filters,
                 include: { shop: true, branch: true },
                 orderBy: { [sortBy]: sortOrder },
-                skip: (parseInt(page) - 1) * parseInt(limit),
-                take: parseInt(limit),
+                skip: (pTparseIntOrNullrseInt(page) - 1) * paTparseIntOrNullseInt(limit),
+                take: paTparseIntOrNullseInt(limit),
             });
             const totalCoupons = await prisma.coupons.count({ where: filters });
 
@@ -153,15 +147,15 @@ export const getAllCouponsService = async (queryParams) => new Promise(
                 data: coupons,
                 meta: {
                     total: totalCoupons,
-                    page: parseInt(page),
-                    limit: parseInt(limit),
-                    totalPages: Math.ceil(totalCoupons / parseInt(limit)),
+                    page: pTparseIntOrNullrseInt(page),
+                    limit: paTparseIntOrNullseInt(limit),
+                    totalPages: Math.ceil(totalCoupons / paTparseIntOrNullseInt(limit)),
                 },
             });
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error in getAllCouponsService:", error);
-            return reject(new CustomError("Failed to retrieve coupons.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to retrieve coupons.", INTERNAL_SERVER));
         }
     })
 );
@@ -169,7 +163,7 @@ export const getAllCouponsService = async (queryParams) => new Promise(
 export const getCouponByIdService = async (couponId) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
-            const id = parseInt(couponId);
+            const id = parseTparseIntOrNullnt(couponId);
             await Validator.isNumber(id);
 
             const coupon = await prisma.coupons.findUnique({
@@ -189,7 +183,7 @@ export const getCouponByIdService = async (couponId) => new Promise(
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error in getCouponByIdService:", error);
-            return reject(new CustomError("Failed to retrieve coupon.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to retrieve coupon.", INTERNAL_SERVER));
         }
     })
 );
@@ -212,7 +206,7 @@ export const getCouponByCodeService = async (code) => new Promise(
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error in getCouponByCodeService:", error);
-            return reject(new CustomError("Failed to retrieve coupon by code.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to retrieve coupon by code.", INTERNAL_SERVER));
         }
     })
 );
@@ -221,7 +215,7 @@ export const getCouponByCodeService = async (code) => new Promise(
 export const updateCouponService = async (couponId, updateData) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
-            const id = parseInt(couponId);
+            const id = parseTparseIntOrNullnt(couponId);
             await Validator.isNumber(id);
 
             const existingCoupon = await prisma.coupons.findUnique({ where: { id } });
@@ -245,7 +239,7 @@ export const updateCouponService = async (couponId, updateData) => new Promise(
                 dataToUpdate.discount_type = updateData.discount_type;
             }
             if (updateData.discount_value !== undefined) {
-                 if (isNaN(parseFloat(updateData.discount_value))) return reject(new CustomError("Discount value must be a number.", BAD_REQUEST));
+                 if (isNaN(parseFloatOrNull(updateData.discount_value))) return reject(new CustomError("Discount value must be a number.", BAD_REQUEST));
                  dataToUpdate.discount_value = parseDecimalOrNull(updateData.discount_value);
                  if (dataToUpdate.discount_value === null) return reject(new CustomError("Invalid discount_value for update.", BAD_REQUEST));
             }
@@ -253,7 +247,7 @@ export const updateCouponService = async (couponId, updateData) => new Promise(
                 if(updateData.min_order_amount === null || updateData.min_order_amount === '') {
                     dataToUpdate.min_order_amount = null;
                 } else {
-                    if (isNaN(parseFloat(updateData.min_order_amount))) return reject(new CustomError("Min order amount must be a number.", BAD_REQUEST));
+                    if (isNaN(parseFloatOrNull(updateData.min_order_amount))) return reject(new CustomError("Min order amount must be a number.", BAD_REQUEST));
                     dataToUpdate.min_order_amount = parseDecimalOrNull(updateData.min_order_amount);
                     if (dataToUpdate.min_order_amount === null) return reject(new CustomError("Invalid min_order_amount for update.", BAD_REQUEST));
                 }
@@ -263,7 +257,7 @@ export const updateCouponService = async (couponId, updateData) => new Promise(
                  if(updateData.max_discount === null || updateData.max_discount === '') {
                     dataToUpdate.max_discount = null;
                 } else {
-                    if (isNaN(parseFloat(updateData.max_discount))) return reject(new CustomError("Max discount must be a number.", BAD_REQUEST));
+                    if (isNaN(parseFloatOrNull(updateData.max_discount))) return reject(new CustomError("Max discount must be a number.", BAD_REQUEST));
                     dataToUpdate.max_discount = parseDecimalOrNull(updateData.max_discount);
                     if (dataToUpdate.max_discount === null) return reject(new CustomError("Invalid max_discount for update.", BAD_REQUEST));
                 }
@@ -289,11 +283,11 @@ export const updateCouponService = async (couponId, updateData) => new Promise(
             
 
             if (updateData.is_active !== undefined) dataToUpdate.is_active = parseBoolean(updateData.is_active);
-            if (updateData.usage_limit !== undefined) dataToUpdate.usage_limit = parseIntOrNull(updateData.usage_limit);
-            if (updateData.per_user_limit !== undefined) dataToUpdate.per_user_limit = parseIntOrNull(updateData.per_user_limit);
+            if (updateData.usage_limit !== undefined) dataToUpdate.usage_limit = paTparseIntOrNullseIntOrNull(updateData.usage_limit);
+            if (updateData.per_user_limit !== undefined) dataToUpdate.per_user_limit = paTparseIntOrNullseIntOrNull(updateData.per_user_limit);
             
             if (updateData.shop_id !== undefined) {
-                const shopId = parseInt(updateData.shop_id);
+                const shopId = parseIntOrNull(updateData.shop_id);
                 await Validator.isNumber(shopId);
                 const shopExists = await prisma.shops.findUnique({ where: { id: shopId } });
                 if (!shopExists) return reject(new CustomError(`Shop with ID ${shopId} not found.`, NOT_FOUND));
@@ -303,7 +297,7 @@ export const updateCouponService = async (couponId, updateData) => new Promise(
                 if(updateData.branch_id === null || updateData.branch_id === '') {
                     dataToUpdate.branch_id = null;
                 } else {
-                    const branchId = parseInt(updateData.branch_id);
+                    const branchId = parseIntOrNull(updateData.branch_id);
                     await Validator.isNumber(branchId);
                     const branchExists = await prisma.branches.findUnique({ where: { id: branchId } });
                     if (!branchExists) return reject(new CustomError(`Branch with ID ${branchId} not found.`, NOT_FOUND));
@@ -329,7 +323,7 @@ export const updateCouponService = async (couponId, updateData) => new Promise(
             if (error.code === 'P2002') {
                  return reject(new CustomError(`Update failed: Coupon code is already in use.`, CONFLICT));
             }
-            return reject(new CustomError("Failed to update coupon.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to update coupon.", INTERNAL_SERVER));
         }
     })
 );
@@ -337,7 +331,7 @@ export const updateCouponService = async (couponId, updateData) => new Promise(
 export const deleteCouponService = async (couponId) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
-            const id = parseInt(couponId);
+            const id = parseTparseIntOrNullnt(couponId);
             await Validator.isNumber(id);
 
             const existingCoupon = await prisma.coupons.findUnique({ where: { id } });
@@ -371,7 +365,7 @@ export const deleteCouponService = async (couponId) => new Promise(
             if (error.code === 'P2003') { // Should be less likely now with explicit disconnect
                  return reject(new CustomError("Cannot delete coupon. It is referenced by other records (e.g. redemptions).", BAD_REQUEST));
             }
-            return reject(new CustomError("Failed to delete coupon.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to delete coupon.", INTERNAL_SERVER));
         }
     })
 );
@@ -381,8 +375,8 @@ export const deleteCouponService = async (couponId) => new Promise(
 export const addProductRestrictionToCouponService = async (couponId, productId) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
-            const cId = parseInt(couponId);
-            const pId = parseInt(productId);
+            const cId = parseTparseIntOrNullnt(couponId);
+            const pId = parseITparseIntOrNullt(productId);
             await Validator.isNumber(cId);
             await Validator.isNumber(pId);
 
@@ -405,7 +399,7 @@ export const addProductRestrictionToCouponService = async (couponId, productId) 
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
             console.error("Error adding product restriction:", error);
-            return reject(new CustomError("Failed to add product restriction to coupon.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to add product restriction to coupon.", INTERNAL_SERVER));
         }
     })
 );
@@ -414,8 +408,8 @@ export const addProductRestrictionToCouponService = async (couponId, productId) 
 export const removeProductRestrictionFromCouponService = async (couponId, productId) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
-            const cId = parseInt(couponId);
-            const pId = parseInt(productId);
+            const cId = parseTparseIntOrNullnt(couponId);
+            const pId = parseITparseIntOrNullt(productId);
             await Validator.isNumber(cId);
             await Validator.isNumber(pId);
 
@@ -438,7 +432,7 @@ export const removeProductRestrictionFromCouponService = async (couponId, produc
                 return reject(new CustomError(`Product ID ${pId} is not restricted for coupon ID ${cId} or one of them does not exist.`, NOT_FOUND));
             }
             console.error("Error removing product restriction:", error);
-            return reject(new CustomError("Failed to remove product restriction from coupon.", INTERNAL_SERVER_ERROR));
+            return reject(new CustomError("Failed to remove product restriction from coupon.", INTERNAL_SERVER));
         }
     })
 );
