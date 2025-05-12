@@ -69,7 +69,7 @@ export const createProductService = async (productData, file, shop_id) => new Pr
             }
 
             const shopExists = await prisma.shops.findUnique({
-                where: { id: parseInt(+shop_id) }
+                where: { id: +shop_id }
             });
             if (!shopExists) {
                 return reject(new CustomError(`Shop with ID ${+shop_id} not found.`, NOT_FOUND));

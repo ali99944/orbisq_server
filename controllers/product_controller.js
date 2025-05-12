@@ -11,7 +11,7 @@ import {
 export const createProductController = asyncWrapper(
     async (req, res) => {
         
-        const shop_id = +req.shop_id;
+        const shop_id = +req.body.shop_id;
         const product = await createProductService(req.body, req.file, shop_id);
         return res.status(CREATED).json(product);
     }
