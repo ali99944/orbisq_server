@@ -319,7 +319,6 @@ export const updateProductService = async (productId, updateData, file) => new P
             if (file) {
                 await Validator.requiredSingleImage(file);
                 dataToUpdate.image = file.path;
-                // TODO: Consider deleting the old image from storage if existingProduct.image exists
             }
 
             if (Object.keys(dataToUpdate).length === 0) {

@@ -115,8 +115,8 @@ export const createDeskService = async (deskData) => new Promise(
             // }
 
             // Generate QR code details
-            const qrCodeContent = generateDeskQrContent(deskNumber);
-            const qrCodeFilename = generateDeskQrFilename(deskNumber);
+            const qrCodeContent = generateDeskQrContent(deskNumber, deskData.shop_id);
+            const qrCodeFilename = generateDeskQrFilename(deskNumber, deskData.shop_id);
             const qrCodeRelativePath = path.join(QR_CODES_DIR_RELATIVE, qrCodeFilename);
             const qrCodeAbsoluteSavePath = path.join(QR_CODES_DIR_ABSOLUTE, qrCodeFilename);
 

@@ -12,8 +12,8 @@ const QR_CODE_CONTENT_BASE_URL = process.env.QR_CODE_CONTENT_BASE_URL || 'https:
  * @param {number} deskNumber - The desk number.
  * @returns {string} The QR code content string.
  */
-export const generateDeskQrContent = ( deskNumber) => {
-    return `${QR_CODE_CONTENT_BASE_URL}?desk=${deskNumber}`;
+export const generateDeskQrContent = ( deskNumber, shop_id) => {
+    return `${QR_CODE_CONTENT_BASE_URL}/${shop_id}?desk=${deskNumber}`;
 };
 
 /**
@@ -22,8 +22,8 @@ export const generateDeskQrContent = ( deskNumber) => {
  * @param {number} deskNumber
  * @returns {string} e.g., branch_1_desk_101.png
  */
-export const generateDeskQrFilename = (deskNumber) => {
-    return `desk_${deskNumber}.png`;
+export const generateDeskQrFilename = (deskNumber, shop_id) => {
+    return `shop_${shop_id}_desk_${deskNumber}.png`;
 };
 
 /**
