@@ -78,18 +78,18 @@ export const createDeskService = async (deskData) => new Promise(
         try {
             await Validator.validateNotNull({
                 desk_number: deskData.desk_number,
-                branch_id: deskData.branch_id,
+                // branch_id: deskData.branch_id,
             });
 
             const deskNumber = parseInt(deskData.desk_number);
-            const branchId = parseInt(deskData.branch_id);
+            // const branchId = parseInt(deskData.branch_id);
 
             await Validator.isNumber(deskNumber);
             // await Validator.isText(deskData.qrcode);
-            await Validator.isNumber(branchId);
+            // await Validator.isNumber(branchId);
 
             console.log(deskNumber);
-            console.log(branchId);
+            // console.log(branchId);
             
 
             // Check for uniqueness
@@ -109,14 +109,14 @@ export const createDeskService = async (deskData) => new Promise(
 
             
             // Validate relations
-            const branchExists = await prisma.branches.findUnique({ where: { id: branchId } });
-            if (!branchExists) {
-                return reject(new CustomError(`Branch with ID ${branchId} not found.`, NOT_FOUND));
-            }
+            // const branchExists = await prisma.branches.findUnique({ where: { id: branchId } });
+            // if (!branchExists) {
+            //     return reject(new CustomError(`Branch with ID ${branchId} not found.`, NOT_FOUND));
+            // }
 
             // Generate QR code details
-            const qrCodeContent = generateDeskQrContent(branchId, deskNumber);
-            const qrCodeFilename = generateDeskQrFilename(branchId, deskNumber);
+            const qrCodeContent = generateDeskQrContent(deskNumber);
+            const qrCodeFilename = generateDeskQrFilename(deskNumber);
             const qrCodeRelativePath = path.join(QR_CODES_DIR_RELATIVE, qrCodeFilename);
             const qrCodeAbsoluteSavePath = path.join(QR_CODES_DIR_ABSOLUTE, qrCodeFilename);
 
@@ -175,7 +175,7 @@ export const createDeskService = async (deskData) => new Promise(
                 has_view: parseBoolean(deskData.has_view, false),
                 is_wheelchair_accessible: parseBoolean(deskData.is_wheelchair_accessible, true),
                 shop_id: shopId,
-                branch_id: branchId,
+                // branch_id: branchId,
                 needs_cleaning: parseBoolean(deskData.needs_cleaning, false),
                 is_under_maintenance: parseBoolean(deskData.is_under_maintenance, false),
                 maintenance_notes: deskData.maintenance_notes || null,

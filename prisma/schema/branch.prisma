@@ -43,7 +43,7 @@ model branches {
   operating_hours branch_operating_hours[]
   menus           branch_menus[]
   staff           branch_staff[]
-  desks          desks[]
+  // desks          desks[]
   terminals       pos_terminals[]
   inventory       branch_inventory[]
 

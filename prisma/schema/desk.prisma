@@ -40,8 +40,8 @@ model desks {
   is_under_maintenance Boolean @default(false)
   maintenance_notes String?
 
-  branch_id Int
-  branch branches @relation(fields: [branch_id], references: [id])
+  // branch_id Int
+  // branch branches @relation(fields: [branch_id], references: [id])
   
   created_at       DateTime  @default(now())
   updated_at       DateTime  @updatedAt
