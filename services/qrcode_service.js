@@ -13,7 +13,7 @@ const QR_CODE_CONTENT_BASE_URL = process.env.QR_CODE_CONTENT_BASE_URL || 'https:
  * @returns {string} The QR code content string.
  */
 export const generateDeskQrContent = ( deskNumber) => {
-    return `${QR_CODE_CONTENT_BASE_URL}/d/${deskNumber}`;
+    return `${QR_CODE_CONTENT_BASE_URL}?desk=${deskNumber}`;
 };
 
 /**
