@@ -73,7 +73,7 @@ const parseDateOrNull = (value) => {
 
 const DESK_STATUS_ENUM = ['free', 'occupied', 'reserved', 'cleaning', 'out_of_service'];
 
-export const createDeskService = async (deskData) => new Promise(
+export const createDeskService = async (deskData, portal) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
             await Validator.validateNotNull({
@@ -115,8 +115,8 @@ export const createDeskService = async (deskData) => new Promise(
             // }
 
             // Generate QR code details
-            const qrCodeContent = generateDeskQrContent(deskNumber, deskData.shop_id);
-            const qrCodeFilename = generateDeskQrFilename(deskNumber, deskData.shop_id);
+            const qrCodeContent = generateDeskQrContent(deskNumber, portal.shopId);
+            const qrCodeFilename = generateDeskQrFilename(deskNumber, portal.shopId);
             const qrCodeRelativePath = path.join(QR_CODES_DIR_RELATIVE, qrCodeFilename);
             const qrCodeAbsoluteSavePath = path.join(QR_CODES_DIR_ABSOLUTE, qrCodeFilename);
 
@@ -126,9 +126,8 @@ export const createDeskService = async (deskData) => new Promise(
                 return reject(new CustomError(`A QR code file named '${qrCodeFilename}' already exists for another desk. This might indicate a duplicate desk_number and branch_id combination.`, CONFLICT));
             }
             
-            let shopId = null;
-            if (deskData.shop_id) {
-                shopId = parseInt(deskData.shop_id);
+            if (portal.shopId) {
+                shopId = parseInt(portal.shopId);
                 await Validator.isNumber(shopId);
                 const shopExists = await prisma.shops.findUnique({ where: { id: shopId } });
                 if (!shopExists) return reject(new CustomError(`Shop with ID ${shopId} not found.`, NOT_FOUND));
@@ -195,7 +194,7 @@ export const createDeskService = async (deskData) => new Promise(
     })
 );
 
-export const getAllDesksService = async (queryParams) => new Promise(
+export const getAllDesksService = async (queryParams, portal) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
             // const {
@@ -259,7 +258,11 @@ export const getAllDesksService = async (queryParams) => new Promise(
             //     },
             // });
 
-            const desks = await prisma.desks.findMany({})
+            const desks = await prisma.desks.findMany({
+                where: {
+                    shop_id: portal.shopId,
+                }
+            })
 
             return resolve(desks)
         } catch (error) {

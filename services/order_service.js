@@ -55,7 +55,7 @@ const calculateOrderTotals = (items, taxAmount = 0, discountAmount = 0, serviceC
 
 export const createOrderService = async (orderInput, itemsInput) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
-        const { shop_id, order_type, desk_number, customer_id /* ... other order fields ... */ } = orderInput;
+        const { shop_id, order_type, desk_number, customer_id } = orderInput;
 
         try {
             // --- Basic Validations ---

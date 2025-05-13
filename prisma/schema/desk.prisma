@@ -1,6 +1,6 @@
 model desks {
   id               Int       @id @default(autoincrement())
-  desk_number      Int       @unique
+  desk_number      Int
   number_of_seats  Int       @default(2)
   qrcode           String    @unique
   name             String?   // NEW: Custom name like "Window View", "VIP Booth"

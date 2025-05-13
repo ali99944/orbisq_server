@@ -11,14 +11,14 @@ import {
 
 export const createDeskController = asyncWrapper(
     async (req, res) => {
-        const desk = await createDeskService(req.body);
+        const desk = await createDeskService(req.body, req.portal);
         return res.status(CREATED).json(desk);
     }
 );
 
 export const getAllDesksController = asyncWrapper(
     async (req, res) => {
-        const desks = await getAllDesksService(req.query);
+        const desks = await getAllDesksService(req.query, req.portal);
         return res.json(desks);
     }
 );
