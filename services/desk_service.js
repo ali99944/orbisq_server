@@ -18,7 +18,7 @@ import {
 // Absolute path to your public directory. Adjust if your project structure is different.
 const PUBLIC_DIR_ABSOLUTE = path.resolve(process.cwd(), 'public');
 // Relative path for QR codes within the public directory.
-const QR_CODES_DIR_RELATIVE = 'public/qrcodes';
+const QR_CODES_DIR_RELATIVE = 'qrcodes';
 // Absolute path to the QR codes directory.
 const QR_CODES_DIR_ABSOLUTE = path.join(PUBLIC_DIR_ABSOLUTE, QR_CODES_DIR_RELATIVE);
 // Base URL of your application, used for constructing full QR code image URLs.
@@ -117,7 +117,7 @@ export const createDeskService = async (deskData, portal) => new Promise(
             // Generate QR code details
             const qrCodeContent = generateDeskQrContent(deskNumber, portal.shopId);
             const qrCodeFilename = generateDeskQrFilename(deskNumber, portal.shopId);
-            const qrCodeRelativePath = path.join(QR_CODES_DIR_RELATIVE, qrCodeFilename);
+            const qrCodeRelativePath = path.join('public', QR_CODES_DIR_RELATIVE, qrCodeFilename);
             const qrCodeAbsoluteSavePath = path.join(QR_CODES_DIR_ABSOLUTE, qrCodeFilename);
 
             // Check if this QR code file path is already in use
