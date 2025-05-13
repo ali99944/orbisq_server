@@ -464,3 +464,121 @@ export const updateDeskStatusService = async (deskId, updateData) => new Promise
         }
     })
 )
+
+export const generateMultipleDesksService = async (rangeData, portal) => new Promise(
+    promiseAsyncWrapper(async (resolve, reject) => {
+        try {
+            await Validator.validateNotNull({
+                start_range: rangeData.start_range,
+                end_range: rangeData.end_range,
+            });
+
+            const startRange = parseInt(rangeData.start_range);
+            const endRange = parseInt(rangeData.end_range);
+
+            await Validator.isNumber(startRange);
+            await Validator.isNumber(endRange);
+
+            if (startRange > endRange) {
+                return reject(new CustomError("Start range cannot be greater than end range.", BAD_REQUEST));
+            }
+
+            if ((endRange - startRange) > 100) {
+                return reject(new CustomError("Cannot create more than 100 desks at once.", BAD_REQUEST));
+            }
+
+            // Validate optional common properties that will apply to all created desks
+            if (rangeData.section) await Validator.isText(rangeData.section);
+            if (rangeData.floor) await Validator.isNumber(parseInt(rangeData.floor));
+            if (rangeData.number_of_seats) await Validator.isNumber(parseInt(rangeData.number_of_seats));
+            if (rangeData.has_outlets !== undefined) parseBoolean(rangeData.has_outlets);
+            if (rangeData.has_view !== undefined) parseBoolean(rangeData.has_view);
+            if (rangeData.is_wheelchair_accessible !== undefined) parseBoolean(rangeData.is_wheelchair_accessible);
+            if (rangeData.minimum_spend) await Validator.isNumber(parseFloat(rangeData.minimum_spend));
+
+            const shopId = parseInt(portal.shopId);
+            const shopExists = await prisma.shops.findUnique({ where: { id: shopId } });
+            if (!shopExists) {
+                return reject(new CustomError(`Shop with ID ${shopId} not found.`, NOT_FOUND));
+            }
+
+            // Check for existing desk numbers within the range
+            const existingDesks = await prisma.desks.findMany({
+                where: {
+                    desk_number: {
+                        gte: startRange,
+                        lte: endRange
+                    },
+                    shop_id: shopId
+                },
+                select: {
+                    desk_number: true
+                }
+            });
+
+            if (existingDesks.length > 0) {
+                const existingNumbers = existingDesks.map(desk => desk.desk_number);
+                return reject(new CustomError(`Desk numbers ${existingNumbers.join(', ')} already exist in the specified range.`, CONFLICT));
+            }
+
+            // Create desks within the range
+            const createdDesks = [];
+            for (let deskNumber = startRange; deskNumber <= endRange; deskNumber++) {
+                // Generate QR code details for this desk
+                const qrCodeContent = generateDeskQrContent(deskNumber, shopId);
+                const qrCodeFilename = generateDeskQrFilename(deskNumber, shopId);
+                const qrCodeRelativePath = path.join('public', QR_CODES_DIR_RELATIVE, qrCodeFilename);
+                const qrCodeAbsoluteSavePath = path.join(QR_CODES_DIR_ABSOLUTE, qrCodeFilename);
+
+                // Generate and save the QR code image file
+                await generateAndSaveQrWithLabel(qrCodeContent, "ORBISQ", qrCodeAbsoluteSavePath);
+
+                // Create the desk with common properties
+                const deskData = {
+                    desk_number: deskNumber,
+                    qrcode: qrCodeRelativePath,
+                    name: rangeData.name_prefix ? `${rangeData.name_prefix} ${deskNumber}` : null,
+                    section: rangeData.section || "main",
+                    floor: rangeData.floor ? parseInt(rangeData.floor) : 1,
+                    number_of_seats: rangeData.number_of_seats ? parseInt(rangeData.number_of_seats) : 2,
+                    status: 'free',
+                    shop_id: shopId,
+                    has_outlets: parseBoolean(rangeData.has_outlets, false),
+                    has_view: parseBoolean(rangeData.has_view, false),
+                    is_wheelchair_accessible: parseBoolean(rangeData.is_wheelchair_accessible, true),
+                    minimum_spend: parseFloatOrNull(rangeData.minimum_spend),
+                    needs_cleaning: false,
+                    is_under_maintenance: false,
+                    position_x: null, // These would need individual setting later
+                    position_y: null
+                };
+
+                const desk = await prisma.desks.create({ data: deskData });
+                createdDesks.push(desk);
+            }
+
+            return resolve({
+                message: `Successfully created ${createdDesks.length} desks from number ${startRange} to ${endRange}.`,
+                count: createdDesks.length,
+                desks: createdDesks
+            });
+
+        } catch (error) {
+            if (error instanceof CustomError) return reject(error);
+            console.error("Error in generateMultipleDesksService:", error);
+            
+            // Clean up any created QR codes if there's an error
+            if (error.createdQrCodes && error.createdQrCodes.length > 0) {
+                for (const qrPath of error.createdQrCodes) {
+                    try {
+                        await deleteQrCodeFile(qrPath);
+                    } catch (cleanupError) {
+                        console.error("Error cleaning up QR code files:", cleanupError);
+                    }
+                }
+            }
+            
+            return reject(new CustomError("Failed to generate multiple desks.", INTERNAL_SERVER));
+        }
+    })
+);

@@ -5,7 +5,8 @@ import {
     getDeskByIdController,
     updateDeskController,
     deleteDeskController,
-    updateDeskStatusController
+    updateDeskStatusController,
+    createMultiDeskController
 } from "../controllers/desk_controller.js";
 import { authenticatePortal } from "../middlewares/shop_auth_middleware.js";
 
@@ -17,6 +18,8 @@ router.get('/desks', authenticatePortal, getAllDesksController);
 router.get('/desks/:id', getDeskByIdController);
 router.patch('/desks/:id', authenticatePortal, updateDeskController);
 router.delete('/desks/:id', authenticatePortal, deleteDeskController);
+
+router.post('/desks/multi', authenticatePortal, createMultiDeskController);
 
 
 router.put('/desks/:id/status', updateDeskStatusController);

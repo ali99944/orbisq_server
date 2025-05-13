@@ -6,7 +6,8 @@ import {
     getDeskByIdService,
     updateDeskService,
     deleteDeskService,
-    updateDeskStatusService
+    updateDeskStatusService,
+    generateMultipleDesksService
 } from "../services/desk_service.js";
 
 export const createDeskController = asyncWrapper(
@@ -52,5 +53,12 @@ export const updateDeskStatusController = asyncWrapper(
         const { id } = req.params;
         const updatedDesk = await updateDeskStatusService(id, req.body);
         return res.json(updatedDesk);
+    }
+)
+
+export const createMultiDeskController = asyncWrapper(
+    async (req, res) => {
+        const desks = await generateMultipleDesksService(req.body, req.portal);
+        return res.status(CREATED).json(desks);
     }
 )
