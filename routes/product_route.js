@@ -7,7 +7,7 @@ import {
     deleteProductController
 } from "../controllers/product_controller.js";
 import { createMulterStorage } from "../lib/multer_storage.js"; // Your multer setup
-// import { authenticatePortal } from "../middlewares/shop_auth_middleware.js";
+import { authenticatePortal } from "../middlewares/shop_auth_middleware.js";
 
 const router = express.Router();
 
@@ -16,7 +16,7 @@ const productUpload = createMulterStorage('images/products', 'product').single('
 // Note: 'image' is the field name expected in the form-data
 
 router.post('/products', productUpload, createProductController);
-router.get('/products', getAllProductsController);
+router.get('/products', authenticatePortal, getAllProductsController);
 router.get('/products/:id', getProductByIdController);
 router.put('/products/:id', productUpload, updateProductController);
 router.delete('/products/:id', deleteProductController);

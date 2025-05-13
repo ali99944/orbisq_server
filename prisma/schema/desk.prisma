@@ -45,9 +45,6 @@ model desks {
   
   created_at       DateTime  @default(now())
   updated_at       DateTime  @updatedAt
-
-  // users users[] @relation("assigned_desks")
-  orders orders[]
 }
 
 

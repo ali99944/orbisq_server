@@ -19,7 +19,7 @@ export const createProductController = asyncWrapper(
 
 export const getAllProductsController = asyncWrapper(
     async (req, res) => {
-        const products = await getAllProductsService(req.query); // Pass query params for filtering/pagination
+        const products = await getAllProductsService(req.query, req.portal); // Pass query params for filtering/pagination
         return res.json(products);
     }
 );

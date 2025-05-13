@@ -143,10 +143,15 @@ export const createProductService = async (productData, file, shop_id) => new Pr
     })
 );
 
-export const getAllProductsService = async (queryParams) => new Promise(
+export const getAllProductsService = async (queryParams, portal) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
+            console.log(portal);
+            
             const products = await prisma.products.findMany({
+                where: {
+                    shop_id: +portal.shopId
+                },
                 include: {
                     product_category: true
                 }

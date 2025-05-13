@@ -97,19 +97,19 @@ export const loginShopPortal = async (username, password) => new Promise(
         );
 
         // Update last login
-        await prisma.shop_access_portal.update({
-            where: { id: portal.id },
-            data: { last_login_at: new Date() }
-        });
+        // await prisma.shop_access_portal.update({
+        //     where: { id: portal.id },
+        //     data: { last_login_at: new Date() }
+        // });
 
         // Create access token record
-        const accessToken = await prisma.shop_access_token.create({
-            data: {
-                token,
-                portal_id: portal.id,
-                expires_at: new Date(Date.now() + parseInt(json_web_token_expires_in) * 1000)
-            }
-        });
+        // const accessToken = await prisma.shop_access_token.create({
+        //     data: {
+        //         token,
+        //         portal_id: portal.id,
+        //         expires_at: new Date(Date.now() + parseInt(json_web_token_expires_in) * 1000)
+        //     }
+        // });
 
         return resolve({
             portal: {
@@ -134,35 +134,35 @@ export const verifyPortalToken = async (token) => new Promise(
             }
 
             // Check if token exists in database
-            const accessToken = await prisma.shop_access_token.findFirst({
-                where: {
-                    token,
-                    portal_id: decoded.id,
-                    expires_at: { gt: new Date() }
-                },
-                include: {
-                    portal: {
-                        include: {
-                            shop: true
-                        }
-                    }
-                }
-            });
+            // const accessToken = await prisma.shop_access_token.findFirst({
+            //     where: {
+            //         token,
+            //         portal_id: decoded.id,
+            //         expires_at: { gt: new Date() }
+            //     },
+            //     include: {
+            //         portal: {
+            //             include: {
+            //                 shop: true
+            //             }
+            //         }
+            //     }
+            // });
 
-            if (!accessToken) {
-                throw new CustomError('Token expired or invalid', NOT_AUTHORIZED);
-            }
+            // if (!accessToken) {
+            //     throw new CustomError('Token expired or invalid', NOT_AUTHORIZED);
+            // }
 
             // Update last used at
-            await prisma.shop_access_token.update({
-                where: { id: accessToken.id },
-                data: { last_used_at: new Date() }
-            });
+            // await prisma.shop_access_token.update({
+            //     where: { id: accessToken.id },
+            //     data: { last_used_at: new Date() }
+            // });
 
             return resolve({
                 portalId: decoded.id,
                 shopId: decoded.shop_id,
-                permissions: accessToken.portal.permissions
+                // permissions: accessToken.portal.permissions
             });
         } catch (error) {
             console.log(error);

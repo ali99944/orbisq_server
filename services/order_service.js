@@ -55,7 +55,7 @@ const calculateOrderTotals = (items, taxAmount = 0, discountAmount = 0, serviceC
 
 export const createOrderService = async (orderInput, itemsInput) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
-        const { shop_id, order_type, desk_id, customer_id /* ... other order fields ... */ } = orderInput;
+        const { shop_id, order_type, desk_number, customer_id /* ... other order fields ... */ } = orderInput;
 
         try {
             // --- Basic Validations ---
@@ -75,8 +75,8 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
             // Add more validations for waiter_id, chef_id if provided
 
             // --- Dine-In Merge Logic ---
-            if (order_type === 'dine_in' && desk_id) {
-                const parsedDeskId = parseInt(desk_id);
+            if (order_type === 'dine_in' && desk_number) {
+                const parsedDeskId = parseInt(desk_number);
                 await Validator.isNumber(parsedDeskId);
                 const deskExists = await prisma.desks.findUnique({ where: { id: parsedDeskId }});
                 if(!deskExists) return reject(new CustomError(`Desk with ID ${parsedDeskId} not found.`, NOT_FOUND));
@@ -102,7 +102,7 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                 order_number,
                 status: orderInput.status || 'pending', // Default status
                 customer_id: customer_id ? parseInt(customer_id) : null,
-                desk_id: (order_type === 'dine_in' && desk_id) ? parseInt(desk_id) : null,
+                desk_number: (order_type === 'dine_in' && desk_number) ? parseInt(desk_number) : null,
                 order_type,
                 takeaway_pickup_time: order_type === 'takeaway' ? parseDateOrNull(orderInput.takeaway_pickup_time) : null,
                 takeaway_customer_name: order_type === 'takeaway' ? orderInput.takeaway_customer_name : null,
@@ -199,9 +199,9 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
 
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
-            if (error.code === 'P2002' && error.meta?.target?.includes('desk_id')) {
+            if (error.code === 'P2002' && error.meta?.target?.includes('desk_number')) {
                 return reject(new CustomError(
-                    `Desk with ID ${desk_id} is already uniquely associated with another order. It might be an old, uncleared order.`,
+                    `Desk with ID ${desk_number} is already uniquely associated with another order. It might be an old, uncleared order.`,
                     CONFLICT
                 ));
             }
@@ -390,7 +390,7 @@ export const updateOrderStatusService = async (orderId, newStatus, details = {})
             const updateData = { status: newStatus, updated_at: new Date() };
 
             // Handle timestamps based on status
-            if (newStatus === 'preparing' && !order.preparation_start_time) updateData.preparation_start_time = new Date(); // Example custom field
+            // if (newStatus === 'preparing' && !order.preparation_start_time) updateData.preparation_start_time = new Date(); // Example custom field
             if (newStatus === 'ready' && !order.ready_at) updateData.ready_at = new Date();
             if (newStatus === 'served' && !order.served_at) updateData.served_at = new Date();
             if (newStatus === 'delivered' && !order.actual_delivery_time) updateData.actual_delivery_time = new Date();
@@ -407,8 +407,8 @@ export const updateOrderStatusService = async (orderId, newStatus, details = {})
 
             // If order is completed or cancelled, and it had a desk, clear the desk_id
             // This is crucial for the @unique constraint on orders.desk_id
-            if (['completed', 'cancelled'].includes(newStatus) && order.desk_id) {
-                updateData.desk_id = null; // Free up the desk
+            if (['completed', 'cancelled'].includes(newStatus) && order.desk_number) {
+                updateData.desk_number = null; // Free up the desk
             }
 
 

@@ -8,8 +8,10 @@ model orders {
   customer          customers?  @relation(fields: [customer_id], references: [id])
   
   // Desk relationship
-  desk_id           Int? @unique
-  desk              desks?      @relation(fields: [desk_id], references: [id])
+  // desk_id           Int? @unique
+  // desk              desks?      @relation(fields: [desk_id], references: [id])
+
+  desk_number Int? 
 
   order_type   order_type // NEW: Crucial for distinguishing order types
 
