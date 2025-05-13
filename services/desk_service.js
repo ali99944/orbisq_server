@@ -18,7 +18,7 @@ import {
 // Absolute path to your public directory. Adjust if your project structure is different.
 const PUBLIC_DIR_ABSOLUTE = path.resolve(process.cwd(), 'public');
 // Relative path for QR codes within the public directory.
-const QR_CODES_DIR_RELATIVE = 'qrcodes';
+const QR_CODES_DIR_RELATIVE = 'public/qrcodes';
 // Absolute path to the QR codes directory.
 const QR_CODES_DIR_ABSOLUTE = path.join(PUBLIC_DIR_ABSOLUTE, QR_CODES_DIR_RELATIVE);
 // Base URL of your application, used for constructing full QR code image URLs.

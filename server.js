@@ -22,13 +22,6 @@ app.use('/public', express.static(path.join(__dirname, './public')))
 app.use(compression())
 app.use(cookieParser())
 
-
-app.get("/", (req, res) => {
-    res.send("Hello World!");
-});
-
-
-
 const main = async () => {
     try{
         validateConfigFile()
@@ -41,11 +34,8 @@ const main = async () => {
             (await import('./routes/product_route.js')).default,
             (await import('./routes/order_route.js')).default,
             (await import('./routes/coupon_route.js')).default,
-            // (await import('./routes/discount_route.js')).default,
             (await import('./routes/desk_route.js')).default,
-            (await import('./routes/branch_route.js')).default,
-            // (await import('./routes/order_route.js')).default,
-
+            (await import('./routes/branch_route.js')).default
         )
 
         app.get('*', (req ,res) => {
