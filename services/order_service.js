@@ -387,10 +387,10 @@ export const updateOrderStatusService = async (orderId, newStatus, details = {})
     promiseAsyncWrapper(async (resolve, reject) => {
         // details can include cancellation_reason, staff_id, etc.
         try {
-            await Validator.isText(orderId);
+            // await Validator.isText(orderId);
             await Validator.isEnum(newStatus, ORDER_STATUS_ENUM);
 
-            const order = await prisma.orders.findUnique({ where: { id: orderId }});
+            const order = await prisma.orders.findUnique({ where: { id: +orderId }});
             if(!order) return reject(new CustomError(`Order with ID ${orderId} not found.`, NOT_FOUND));
 
             const updateData = { status: newStatus, updated_at: new Date() };
