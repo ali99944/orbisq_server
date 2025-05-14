@@ -419,9 +419,9 @@ export const updateOrderStatusService = async (orderId, newStatus, details = {})
 
 
             const updatedOrder = await prisma.orders.update({
-                where: { id: orderId },
+                where: { id: +orderId },
                 data: updateData,
-                include: { items: true, shop: true, customer: true, desk: true }
+                include: { order_items: true, shop: true }
             });
             return resolve(updatedOrder);
 
