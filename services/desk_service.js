@@ -322,7 +322,13 @@ export const updateDeskService = async (deskId, updateData) => new Promise(
                 const deskNumber = parseInt(updateData.desk_number);
                 await Validator.isNumber(deskNumber);
                 if (deskNumber !== existingDesk.desk_number) {
-                    const conflictingDesk = await prisma.desks.findUnique({ where: { desk_number: deskNumber } });
+                    const conflictingDesk = await prisma.desks.findFirst({
+                        where: {
+                            desk_number: deskNumber,
+                            shop_id: existingDesk.shop_id,
+                            id: { not: id }
+                        }
+                    });
                     if (conflictingDesk) return reject(new CustomError(`Desk number ${deskNumber} is already in use.`, CONFLICT));
                 }
                 dataToUpdate.desk_number = deskNumber;
