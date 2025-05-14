@@ -428,10 +428,10 @@ export const deleteDeskService = async (deskId) => new Promise(
             }
 
             // Check for active orders or reservations before deleting (important!)
-            const activeOrders = await prisma.orders.count({ where: { desk_id: id, /* Add status for active orders */ }});
-            if(activeOrders > 0){
-                return reject(new CustomError(`Cannot delete desk. It has ${activeOrders} associated active order(s).`, BAD_REQUEST));
-            }
+            // const activeOrders = await prisma.orders.count({ where: { desk_id: id, /* Add status for active orders */ }});
+            // if(activeOrders > 0){
+            //     return reject(new CustomError(`Cannot delete desk. It has ${activeOrders} associated active order(s).`, BAD_REQUEST));
+            // }
             // Add more checks if needed (e.g., if status is 'occupied' or 'reserved')
 
             await prisma.desks.delete({ where: { id } });
