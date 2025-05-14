@@ -437,8 +437,7 @@ export const updateOrderStatusService = async (orderId, newStatus, details = {})
 export const updateOrderGeneralInfoService = async (orderId, updateInput) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
-            await Validator.isText(orderId);
-            const order = await prisma.orders.findUnique({ where: { id: orderId }, include: { items: true }});
+            const order = await prisma.orders.findUnique({ where: { id: +orderId }, include: { order_items: true }});
             if(!order) return reject(new CustomError(`Order with ID ${orderId} not found.`, NOT_FOUND));
             if (!ACTIVE_ORDER_STATUSES.includes(order.status)) {
                  return reject(new CustomError(`Cannot update general info for an order with status '${order.status}'.`, BAD_REQUEST));
@@ -457,12 +456,12 @@ export const updateOrderGeneralInfoService = async (orderId, updateInput) => new
             }
             
             // Staff
-            if (updateInput.waiter_id !== undefined) dataToUpdate.waiter_id = parseIntOrNull(updateInput.waiter_id);
-            if (updateInput.chef_id !== undefined) dataToUpdate.chef_id = parseIntOrNull(updateInput.chef_id);
+            // if (updateInput.waiter_id !== undefined) dataToUpdate.waiter_id = parseIntOrNull(updateInput.waiter_id);
+            // if (updateInput.chef_id !== undefined) dataToUpdate.chef_id = parseIntOrNull(updateInput.chef_id);
 
             // Notes
             if (updateInput.notes !== undefined) dataToUpdate.notes = updateInput.notes;
-            if (updateInput.dietary_restrictions !== undefined) dataToUpdate.dietary_restrictions = updateInput.dietary_restrictions;
+            // if (updateInput.dietary_restrictions !== undefined) dataToUpdate.dietary_restrictions = updateInput.dietary_restrictions;
 
             // Financials (tax, discount, service_charge, tip)
             // Updating these requires recalculating total
