@@ -358,10 +358,10 @@ export const getOrderByIdService = async (orderId) => new Promise(
             const order = await prisma.orders.findUnique({
                 where: { id: orderId },
                 include: {
-                    items: { include: { product: true /* applied_discount: true */ } },
+                    order_items: { include: { product: true /* applied_discount: true */ } },
                     shop: true,
-                    customer: true,
-                    desk: true,
+                    // customer: true,
+                    // desk: true,
                 }
             });
             if (!order) return reject(new CustomError(`Order with ID ${orderId} not found.`, NOT_FOUND));
