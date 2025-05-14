@@ -69,7 +69,7 @@ model order_items {
   order             orders      @relation(fields: [order_id], references: [id])
   
   product_id        Int
-  // product           products    @relation(fields: [product_id], references: [id])
+  product           products    @relation(fields: [product_id], references: [id])
   
   quantity          Int         @default(1)
   unit_price        Float

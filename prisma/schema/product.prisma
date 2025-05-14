@@ -53,6 +53,7 @@ model products {
   updated_at             DateTime  @updatedAt
 
   coupons coupons[] @relation("coupon_product_restrictions")
+  order_items order_items[]
 }
 
 // ENUMS with new additions
