@@ -360,10 +360,12 @@ export const getOrderByIdService = async (orderId) => new Promise(
                     id: +orderId
                 },
                 include: {
-                    order_items: { include: { product: true /* applied_discount: true */ } },
-                    shop: true,
-                    // customer: true,
-                    // desk: true,
+                    order_items: {
+                        include: {
+                            product: true
+                        }
+                    },
+                    shop: true
                 }
             });
             if (!order) return reject(new CustomError(`Order with ID ${orderId} not found.`, NOT_FOUND));
