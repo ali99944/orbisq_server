@@ -93,7 +93,12 @@ export const createDeskService = async (deskData, portal) => new Promise(
             
 
             // Check for uniqueness
-            const existingDeskByNumber = await prisma.desks.findUnique({ where: { desk_number: deskNumber } });
+            const existingDeskByNumber = await prisma.desks.findFirst({
+                where: {
+                    desk_number: +deskNumber,
+                    shop_id: +portal.shopId,
+                }
+            });
             if (existingDeskByNumber) {
                 return reject(new CustomError(`Desk with number ${deskNumber} already exists.`, CONFLICT));
             }

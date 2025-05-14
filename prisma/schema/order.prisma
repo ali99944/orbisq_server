@@ -1,5 +1,5 @@
 model orders {
-  id                String      @id @default(uuid())
+  id                Int      @id @default(autoincrement())
   order_number      String      @unique // NEW: Human-readable like "ORD-2023-0001"
   status            order_status @default(pending)
   
@@ -78,6 +78,8 @@ model orders {
   created_at        DateTime    @default(now())
   updated_at        DateTime    @updatedAt
 
+  order_items order_items[]
+
   // coupon_redemptions coupon_redemptions[]
 
   // gift_card_transactions gift_card_transactions[]
@@ -86,7 +88,7 @@ model orders {
 model order_items {
   id                Int         @id @default(autoincrement())
   order_id          Int
-  // order             orders      @relation(fields: [order_id], references: [id])
+  order             orders      @relation(fields: [order_id], references: [id])
   
   product_id        Int
   // product           products    @relation(fields: [product_id], references: [id])
