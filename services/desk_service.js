@@ -178,7 +178,7 @@ export const createDeskService = async (deskData, portal) => new Promise(
                 has_outlets: parseBoolean(deskData.has_outlets, false),
                 has_view: parseBoolean(deskData.has_view, false),
                 is_wheelchair_accessible: parseBoolean(deskData.is_wheelchair_accessible, true),
-                shop_id: shopId,
+                shop_id: portal.shopId,
                 // branch_id: branchId,
                 needs_cleaning: parseBoolean(deskData.needs_cleaning, false),
                 is_under_maintenance: parseBoolean(deskData.is_under_maintenance, false),
