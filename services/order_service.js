@@ -356,7 +356,9 @@ export const getOrderByIdService = async (orderId) => new Promise(
         try {
             await Validator.isText(orderId); // Assuming UUID string
             const order = await prisma.orders.findUnique({
-                where: { id: orderId },
+                where: {
+                    id: +orderId
+                },
                 include: {
                     order_items: { include: { product: true /* applied_discount: true */ } },
                     shop: true,
