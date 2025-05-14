@@ -55,7 +55,7 @@ const calculateOrderTotals = (items, taxAmount = 0, discountAmount = 0, serviceC
 
 export const createOrderService = async (orderInput, itemsInput) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
-        const { shop_id, order_type, desk_number, customer_id } = orderInput;
+        const { shop_id, order_type, desk_number } = orderInput;
 
         try {
             // --- Basic Validations ---
@@ -96,7 +96,7 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
             const newOrderData = {
                 order_number,
                 status: orderInput.status || 'pending', // Default status
-                customer_id: customer_id ? parseInt(customer_id) : null,
+                // customer_id: customer_id ? parseInt(customer_id) : null,
                 desk_number: (order_type === 'dine_in' && desk_number) ? parseInt(desk_number) : null,
                 order_type,
                 customer_name: order_type === 'dine_in' ? orderInput.customer_name : null,
@@ -254,7 +254,7 @@ export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateDat
                 
                 // Prepare data for updating the order itself (e.g., customer_id, notes from merge)
                 const updatePayload = {};
-                if (orderUpdateData.customer_id !== undefined) updatePayload.customer_id = orderUpdateData.customer_id;
+                // if (orderUpdateData.customer_id !== undefined) updatePayload.customer_id = orderUpdateData.customer_id;
                 if (orderUpdateData.waiter_id !== undefined) updatePayload.waiter_id = orderUpdateData.waiter_id;
                 if (orderUpdateData.notes !== undefined) updatePayload.notes = orderUpdateData.notes;
                 // ... other updatable fields ...
