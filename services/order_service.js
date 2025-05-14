@@ -77,7 +77,7 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                     desk_number: +desk_number,
                     shop_id: +shop_id
                 }});
-                if(!deskExists) return reject(new CustomError(`Desk with ID ${parsedDeskNumber} not found.`, NOT_FOUND));
+                if(+desk_number != 0 && !deskExists) return reject(new CustomError(`Desk with ID ${parsedDeskNumber} not found.`, NOT_FOUND));
 
                 const activeOrder = await findActiveOrderForDesk(parsedDeskNumber, parseInt(shop_id));
                 if (activeOrder) {
