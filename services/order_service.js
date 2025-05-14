@@ -360,11 +360,7 @@ export const getOrderByIdService = async (orderId) => new Promise(
                     id: +orderId
                 },
                 include: {
-                    order_items: {
-                        include: {
-                            product: true
-                        }
-                    },
+                    order_items: true,
                     shop: true
                 }
             });
