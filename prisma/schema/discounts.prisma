@@ -27,7 +27,7 @@ model discounts {
 
   desks desks[]
 
-  order_items order_items[]
+  // order_items order_items[]
 }
 
 

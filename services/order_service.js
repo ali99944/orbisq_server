@@ -18,7 +18,7 @@ const findActiveOrderForDesk = async (desk_number, shop_id) => {
             shop_id: shop_id,
             status: { in: ACTIVE_ORDER_STATUSES },
         },
-        include: { items: true } // Include items for merging
+        include: { order_items: true } // Include items for merging
     });
 };
 

@@ -3,17 +3,9 @@ model orders {
   order_number      String      @unique // NEW: Human-readable like "ORD-2023-0001"
   status            order_status @default(pending)
   
-  // Customer relationship
-  // customer_id       Int?
-  // customer          customers?  @relation(fields: [customer_id], references: [id])
-
   customer_name String?
   customer_phone String?
   
-  // Desk relationship
-  // desk_id           Int? @unique
-  // desk              desks?      @relation(fields: [desk_id], references: [id])
-
   desk_number Int? 
 
   order_type   order_type // NEW: Crucial for distinguishing order types
@@ -32,15 +24,6 @@ model orders {
   estimated_delivery_time DateTime?
   actual_delivery_time   DateTime?
   delivery_fee           Float?    @default(0)
-  
-  // Staff relationships
-  waiter_id         Int?        // NEW: Who took the order
-//   waiter            users?      @relation("waiter_orders", fields: [waiter_id], references: [id])
-  chef_id           Int?        // NEW: Who prepared the order
-//   chef              users?      @relation("chef_orders", fields: [chef_id], references: [id])
-  
-  // Order items
-  // items             order_items[]
   
   // Pricing information
   subtotal          Float       @default(0)
@@ -65,7 +48,6 @@ model orders {
   
   // NEW: Special requests
   notes             String?     // NEW: Customer notes
-  dietary_restrictions String? // NEW: Allergies/special requirements
   
   // Shop relationship
   shop_id           Int
@@ -79,10 +61,6 @@ model orders {
   updated_at        DateTime    @updatedAt
 
   order_items order_items[]
-
-  // coupon_redemptions coupon_redemptions[]
-
-  // gift_card_transactions gift_card_transactions[]
 }
 
 model order_items {
@@ -106,9 +84,6 @@ model order_items {
   started_at        DateTime?   // NEW
   completed_at      DateTime?   // NEW
   
-  // NEW: Discount application
-  applied_discount_id Int?
-  applied_discount   discounts? @relation(fields: [applied_discount_id], references: [id])
   
   created_at        DateTime    @default(now())
 
