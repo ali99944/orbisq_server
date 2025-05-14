@@ -341,7 +341,12 @@ export const getAllOrdersService = async (queryParams) => new Promise(
             //     },
             // });
 
-            const orders = await prisma.orders.findMany({})
+            const orders = await prisma.orders.findMany({
+                include: {
+                    order_items: true,
+                    shop: true
+                }
+            })
             return resolve(orders)
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
