@@ -74,8 +74,8 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                 const parsedDeskNumber = parseInt(desk_number);
                 await Validator.isNumber(parsedDeskNumber);
                 const deskExists = await prisma.desks.findFirst({ where: {
-                    desk_number: desk_number,
-                    shop_id: shop_id
+                    desk_number: +desk_number,
+                    shop_id: +shop_id
                 }});
                 if(!deskExists) return reject(new CustomError(`Desk with ID ${parsedDeskNumber} not found.`, NOT_FOUND));
 
