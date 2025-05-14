@@ -106,8 +106,8 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                 // ... fill all other order fields from orderInput with parsing ...
                 delivery_address: order_type === 'delivery' ? orderInput.delivery_address : null,
                 delivery_fee: order_type === 'delivery' ? parseFloatOrNull(orderInput.delivery_fee) : null,
-                waiter_id: orderInput.waiter_id ? parseInt(orderInput.waiter_id) : null,
-                chef_id: orderInput.chef_id ? parseInt(orderInput.chef_id) : null,
+                // waiter_id: orderInput.waiter_id ? parseInt(orderInput.waiter_id) : null,
+                // chef_id: orderInput.chef_id ? parseInt(orderInput.chef_id) : null,
                 
                 subtotal: 0, // Initial
                 tax_amount: parseDecimalOrNull(orderInput.tax_amount) || 0,
@@ -125,7 +125,7 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                 preparation_time: parseIntOrNull(orderInput.preparation_time),
                 // ... other timestamps ...
                 notes: orderInput.notes || null,
-                dietary_restrictions: orderInput.dietary_restrictions || null,
+                // dietary_restrictions: orderInput.dietary_restrictions || null,
                 shop_id: parseInt(shop_id),
             };
             if(newOrderData.payment_method) await Validator.isEnum(newOrderData.payment_method, PAYMENT_METHOD_ENUM);
