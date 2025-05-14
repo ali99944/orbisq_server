@@ -11,11 +11,11 @@ import prisma from "../lib/prisma.js";
 
 
 // --- Internal Helper Functions ---
-const findActiveOrderForDesk = async (deskId, shopId) => {
+const findActiveOrderForDesk = async (desk_number, shop_id) => {
     return prisma.orders.findFirst({
         where: {
-            desk_id: deskId,
-            shop_id: shopId,
+            desk_number: desk_number,
+            shop_id: shop_id,
             status: { in: ACTIVE_ORDER_STATUSES },
         },
         include: { items: true } // Include items for merging
@@ -67,29 +67,24 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
             const shopExists = await prisma.shops.findUnique({ where: { id: parseInt(shop_id) } });
             if (!shopExists) return reject(new CustomError(`Shop with ID ${shop_id} not found.`, NOT_FOUND));
 
-            if (customer_id) {
-                await Validator.isNumber(parseInt(customer_id));
-                const customerExists = await prisma.customers.findUnique({ where: { id: parseInt(customer_id) } });
-                if (!customerExists) return reject(new CustomError(`Customer with ID ${customer_id} not found.`, NOT_FOUND));
-            }
             // Add more validations for waiter_id, chef_id if provided
 
             // --- Dine-In Merge Logic ---
             if (order_type === 'dine_in' && desk_number) {
-                const parsedDeskId = parseInt(desk_number);
-                await Validator.isNumber(parsedDeskId);
-                const deskExists = await prisma.desks.findUnique({ where: { id: parsedDeskId }});
-                if(!deskExists) return reject(new CustomError(`Desk with ID ${parsedDeskId} not found.`, NOT_FOUND));
+                const parsedDeskNumber = parseInt(desk_number);
+                await Validator.isNumber(parsedDeskNumber);
+                const deskExists = await prisma.desks.findFirst({ where: {
+                    desk_number: desk_number,
+                    shop_id: shop_id
+                }});
+                if(!deskExists) return reject(new CustomError(`Desk with ID ${parsedDeskNumber} not found.`, NOT_FOUND));
 
-                const activeOrder = await findActiveOrderForDesk(parsedDeskId, parseInt(shop_id));
+                const activeOrder = await findActiveOrderForDesk(parsedDeskNumber, parseInt(shop_id));
                 if (activeOrder) {
                     // Merge: Add items to existing active order
                     const updatedOrder = await addItemsToOrderService(activeOrder.id, itemsInput, {
-                        // Pass any updatable fields from new orderInput if needed
-                        customer_id: customer_id ? parseInt(customer_id) : activeOrder.customer_id,
                         waiter_id: orderInput.waiter_id ? parseInt(orderInput.waiter_id) : activeOrder.waiter_id,
                         notes: orderInput.notes || activeOrder.notes,
-                        // ... other fields that might be updated on the existing order
                     });
                     return resolve(updatedOrder);
                 }
