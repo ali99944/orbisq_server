@@ -173,7 +173,7 @@ export const createDeskService = async (deskData, portal) => new Promise(
                 reservation_time: parseDateOrNull(deskData.reservation_time),
                 occupation_time: parseDateOrNull(deskData.occupation_time),
                 customer_id: parseIntOrNull(deskData.customer_id), // Assuming customer_id is just an int for now
-                discount_id: discountId,
+                // discount_id: discountId,
                 minimum_spend: parseFloatOrNull(deskData.minimum_spend),
                 has_outlets: parseBoolean(deskData.has_outlets, false),
                 has_view: parseBoolean(deskData.has_view, false),
