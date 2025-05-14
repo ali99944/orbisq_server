@@ -187,7 +187,7 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                         total: finalTotals.total,
                         // tax_amount, discount_amount etc. are already set or could be recalculated here too
                     },
-                    include: { order_items: true, shop: true, customer: true, desk: true }
+                    include: { order_items: true, shop: true, desk: true }
                 });
                 return updatedOrderWithTotals;
             });
