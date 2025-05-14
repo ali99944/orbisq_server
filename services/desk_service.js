@@ -132,19 +132,19 @@ export const createDeskService = async (deskData, portal) => new Promise(
             }
             
             if (portal.shopId) {
-                shopId = parseInt(portal.shopId);
-                await Validator.isNumber(shopId);
-                const shopExists = await prisma.shops.findUnique({ where: { id: shopId } });
-                if (!shopExists) return reject(new CustomError(`Shop with ID ${shopId} not found.`, NOT_FOUND));
+                // shopId = parseInt(portal.shopId);
+                // await Validator.isNumber(shopId);
+                const shopExists = await prisma.shops.findUnique({ where: { id: parseInt(portal.shopId) } });
+                if (!shopExists) return reject(new CustomError(`Shop with ID ${parseInt(portal.shopId)} not found.`, NOT_FOUND));
             }
             
-            let discountId = null;
-            if (deskData.discount_id) {
-                discountId = parseInt(deskData.discount_id);
-                await Validator.isNumber(discountId);
-                const discountExists = await prisma.discounts.findUnique({ where: { id: discountId } });
-                if (!discountExists) return reject(new CustomError(`Discount with ID ${discountId} not found.`, NOT_FOUND));
-            }
+            // let discountId = null;
+            // if (deskData.discount_id) {
+            //     discountId = parseInt(deskData.discount_id);
+            //     await Validator.isNumber(discountId);
+            //     const discountExists = await prisma.discounts.findUnique({ where: { id: discountId } });
+            //     if (!discountExists) return reject(new CustomError(`Discount with ID ${discountId} not found.`, NOT_FOUND));
+            // }
 
             // Validate optionals
             if (deskData.name) await Validator.isText(deskData.name);
