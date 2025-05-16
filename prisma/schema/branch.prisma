@@ -48,8 +48,6 @@ model branches {
   inventory       branch_inventory[]
 
 
-  coupons coupons[]
-  coupon_redemptions coupon_redemptions[]
   gift_cards gift_cards[]
 
   created_at      DateTime        @default(now())

@@ -30,8 +30,6 @@ model users {
 
   coupons coupons[] @relation("coupon_user_restrictions")
 
-  coupon_redemptions coupon_redemptions[]
-  branch_id Int
   // branch branches
 
   gift_card_transactions gift_card_transactions[]

@@ -13,7 +13,8 @@ import {
 
 export const createCouponController = asyncWrapper(
     async (req, res) => {
-        const coupon = await createCouponService(req.body);
+        const portal = req.portal;
+        const coupon = await createCouponService(req.body, portal);
         return res.status(CREATED).json(coupon);
     }
 );

@@ -83,7 +83,7 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                 if (activeOrder) {
                     // Merge: Add items to existing active order
                     const updatedOrder = await addItemsToOrderService(activeOrder.id, itemsInput, {
-                        waiter_id: orderInput.waiter_id ? parseInt(orderInput.waiter_id) : activeOrder.waiter_id,
+                        // waiter_id: orderInput.waiter_id ? parseInt(orderInput.waiter_id) : activeOrder.waiter_id,
                         notes: orderInput.notes || activeOrder.notes,
                     });
                     return resolve(updatedOrder);
@@ -96,18 +96,14 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
             const newOrderData = {
                 order_number,
                 status: orderInput.status || 'pending', // Default status
-                // customer_id: customer_id ? parseInt(customer_id) : null,
                 desk_number: (order_type === 'dine_in' && desk_number) ? parseInt(desk_number) : null,
                 order_type,
                 customer_name: order_type === 'dine_in' ? orderInput.customer_name : null,
                 customer_phone: order_type === 'dine_in' ? orderInput.customer_phone : null,
                 takeaway_pickup_time: order_type === 'takeaway' ? parseDateOrNull(orderInput.takeaway_pickup_time) : null,
                 takeaway_customer_name: order_type === 'takeaway' ? orderInput.takeaway_customer_name : null,
-                // ... fill all other order fields from orderInput with parsing ...
                 delivery_address: order_type === 'delivery' ? orderInput.delivery_address : null,
                 delivery_fee: order_type === 'delivery' ? parseFloatOrNull(orderInput.delivery_fee) : null,
-                // waiter_id: orderInput.waiter_id ? parseInt(orderInput.waiter_id) : null,
-                // chef_id: orderInput.chef_id ? parseInt(orderInput.chef_id) : null,
                 
                 subtotal: 0, // Initial
                 tax_amount: parseDecimalOrNull(orderInput.tax_amount) || 0,

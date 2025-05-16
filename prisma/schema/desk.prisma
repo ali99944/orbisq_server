@@ -66,8 +66,7 @@ model coupons {
   discount_value  Decimal           @db.Decimal(10, 2)
   min_order_amount Decimal?         @db.Decimal(10, 2)
   max_discount    Decimal?          @db.Decimal(10, 2)
-  start_date      DateTime
-  end_date        DateTime
+  expires_at      DateTime?
   is_active       Boolean         @default(true)
   usage_limit     Int?
   per_user_limit  Int?            @default(1)
@@ -76,8 +75,6 @@ model coupons {
   // Relations
   shop_id         Int
   shop            shops           @relation(fields: [shop_id], references: [id])
-  branch_id       Int?
-  branch          branches?       @relation(fields: [branch_id], references: [id])
   user_restrictions users[]       @relation("coupon_user_restrictions")
   product_restrictions products[] @relation("coupon_product_restrictions")
   
@@ -91,19 +88,15 @@ model coupons {
 model coupon_redemptions {
   id              Int             @id @default(autoincrement())
   coupon_id       Int
-  order_id        Int?
-  user_id         Int?
+  order_id        Int? @unique
+  order           orders?        @relation(fields: [order_id], references: [id])
   redeemed_at     DateTime        @default(now())
   discount_amount Decimal           @db.Decimal(10, 2)
   
   // Relations
   coupon          coupons         @relation(fields: [coupon_id], references: [id])
-  // order           orders?        @relation(fields: [order_id], references: [id])
-  user            users?         @relation(fields: [user_id], references: [id])
-  branch          branches?      @relation(fields: [branch_id], references: [id])
-  branch_id       Int?
-  
-  @@index([coupon_id, user_id])
+  // order           orders?        @relation(fields: [order_id], references: [id]) 
+  @@index([coupon_id])
 }
 
 

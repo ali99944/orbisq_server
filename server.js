@@ -10,13 +10,14 @@ import ErrorHandlerMiddleware from "./middlewares/error_handler.js";
 import { host, port, validateConfigFile } from "./lib/configs.js";
 import { NOT_FOUND } from "./lib/status_codes.js";
 import logger from "./lib/logger.js";
+import { SOCKET_EVENTS } from "./utils/socket_constants.js";
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
+export const io = new Server(httpServer, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
@@ -63,6 +64,13 @@ io.on('connection', (socket) => {
         console.log('Client disconnected:', socket.id);
     });
 });
+
+app.get('/test-conn', (req,res) => {
+    io.emit(SOCKET_EVENTS.ORDER_CREATED, { orderId: 1, status: 'completed' });
+    return res.json({
+        message: 'Hello World'
+    })
+})
 
 const main = async () => {
     try{

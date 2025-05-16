@@ -61,6 +61,8 @@ model orders {
   updated_at        DateTime    @updatedAt
 
   order_items order_items[]
+
+  coupon_redemption coupon_redemptions?
 }
 
 model order_items {
@@ -76,8 +78,8 @@ model order_items {
   total_price       Float       @default(0)
   
   // NEW: Customization options
-  special_requests  String?     // NEW: "No onions", "Extra spicy" etc.
-  variant_options   Json?       // NEW: For product variants
+  special_requests  String?     
+  variant_options   Json?       
   
   // NEW: Preparation tracking
   status            item_status @default(pending)

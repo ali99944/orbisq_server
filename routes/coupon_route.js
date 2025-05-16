@@ -9,10 +9,11 @@ import {
     addProductRestrictionController,
     removeProductRestrictionController
 } from "../controllers/coupon_controller.js";
+import { authenticatePortal } from "../middlewares/shop_auth_middleware.js";
 
 const router = express.Router();
 
-router.post('/coupons', createCouponController);
+router.post('/coupons', authenticatePortal, createCouponController);
 router.get('/coupons', getAllCouponsController);
 router.get('/coupons/id/:id', getCouponByIdController); // Differentiate path for ID
 router.get('/coupons/code/:code', getCouponByCodeController); // Differentiate path for code
