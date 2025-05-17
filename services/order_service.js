@@ -217,7 +217,7 @@ export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateDat
 
             const existingOrder = await prisma.orders.findUnique({
                 where: { id: orderId },
-                include: { items: true }
+                include: { order_items: true }
             });
             if (!existingOrder) return reject(new CustomError(`Order with ID ${orderId} not found.`, NOT_FOUND));
             if (!ACTIVE_ORDER_STATUSES.includes(existingOrder.status)) {
