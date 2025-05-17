@@ -207,7 +207,6 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
 export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateData = {}) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
-            await Validator.isText(orderId); // Assuming UUID string
             await Validator.minArrayLength(itemsInput, 1, "Must add at least one item.");
 
             const existingOrder = await prisma.orders.findUnique({
