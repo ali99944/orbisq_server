@@ -654,27 +654,97 @@ export const deleteOrderService = async (orderId) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
             await Validator.isText(orderId);
-            const order = await prisma.orders.findUnique({ where: { id: orderId } });
+            const order = await prisma.orders.findUnique({ where: { id: +orderId } });
             if (!order) return reject(new CustomError(`Order with ID ${orderId} not found.`, NOT_FOUND));
 
-            // Usually, orders are cancelled or archived, not hard-deleted, especially if paid.
-            // For this example, if status is 'pending' or 'cancelled' maybe allow hard delete.
-            if (!['pending', 'cancelled', 'refunded'].includes(order.status) && order.payment_status === 'paid') {
-                return reject(new CustomError("Cannot delete a processed or paid order. Consider cancelling or refunding.", BAD_REQUEST));
+            // Implement any business logic for deletion
+            // For example, you might want to prevent deletion of orders that are in certain statuses
+            if (order.status === 'completed' || order.status === 'delivered') {
+                return reject(new CustomError(`Cannot delete an order with status '${order.status}'.`, BAD_REQUEST));
             }
 
-            await prisma.$transaction(async (tx) => {
-                await tx.order_item_modifiers.deleteMany({ where: { order_item: { order_id: orderId } } }); // If you have these
-                await tx.order_item_addons.deleteMany({ where: { order_item: { order_id: orderId } } });    // If you have these
-                await tx.order_items.deleteMany({ where: { order_id: orderId } });
-                await tx.orders.delete({ where: { id: orderId } });
-            });
+            // Delete the order and its items
+            await prisma.$transaction([
+                prisma.order_items.deleteMany({ where: { order_id: +orderId } }),
+                prisma.orders.delete({ where: { id: +orderId } })
+            ]);
 
-            return resolve({ message: "Order and its items deleted successfully." });
+            return resolve({ message: `Order with ID ${orderId} has been deleted.` });
         } catch (error) {
             if (error instanceof CustomError) return reject(error);
-            console.error("Error deleting order:", error);
+            console.error("Error in deleteOrderService:", error);
             return reject(new CustomError("Failed to delete order.", INTERNAL_SERVER));
+        }
+    })
+);
+
+// Service for updating order payment status
+export const updateOrderPaymentService = async (orderId, paymentData) => new Promise(
+    promiseAsyncWrapper(async (resolve, reject) => {
+        try {
+            // Validate inputs
+            await Validator.isText(orderId);
+            await Validator.validateNotNull({ payment_status: paymentData.payment_status });
+            await Validator.isEnum(paymentData.payment_status, PAYMENT_STATUS_ENUM);
+            
+            // If payment status is refunded, refund reason is required
+            if (paymentData.payment_status === 'refunded' && !paymentData.refund_reason) {
+                return reject(new CustomError("Refund reason is required when payment status is set to refunded.", BAD_REQUEST));
+            }
+            
+            // If payment method is provided, validate it
+            if (paymentData.payment_method) {
+                await Validator.isEnum(paymentData.payment_method, PAYMENT_METHOD_ENUM);
+            }
+
+            // Check if order exists
+            const order = await prisma.orders.findUnique({ where: { id: +orderId }});
+            if (!order) return reject(new CustomError(`Order with ID ${orderId} not found.`, NOT_FOUND));
+
+            // Prepare update data
+            const updateData = {
+                payment_status: paymentData.payment_status,
+                updated_at: new Date()
+            };
+
+            // Set payment method if provided
+            if (paymentData.payment_method) {
+                updateData.payment_method = paymentData.payment_method;
+            }
+
+            // Set transaction ID if provided
+            if (paymentData.transaction_id) {
+                updateData.transaction_id = paymentData.transaction_id;
+            }
+
+            // Handle timestamps and additional fields based on payment status
+            if (paymentData.payment_status === 'paid' && !order.paid_at) {
+                updateData.paid_at = new Date();
+            } else if (paymentData.payment_status === 'refunded') {
+                updateData.refunded_at = new Date();
+                updateData.refund_reason = paymentData.refund_reason;
+            } else if (paymentData.payment_status === 'unpaid') {
+                // Reset payment-related fields if setting back to unpaid
+                updateData.paid_at = null;
+                updateData.refunded_at = null;
+                updateData.refund_reason = null;
+            }
+
+            // Update the order
+            const updatedOrder = await prisma.orders.update({
+                where: { id: +orderId },
+                data: updateData,
+                include: {
+                    order_items: true,
+                    shop: true
+                }
+            });
+
+            return resolve(updatedOrder);
+        } catch (error) {
+            if (error instanceof CustomError) return reject(error);
+            console.error("Error in updateOrderPaymentService:", error);
+            return reject(new CustomError("Failed to update order payment status.", INTERNAL_SERVER));
         }
     })
 );

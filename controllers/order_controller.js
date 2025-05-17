@@ -9,7 +9,8 @@ import {
     addItemsToOrderService, // This is specifically for merged/existing orders
     updateOrderItemService,
     removeOrderItemService,
-    deleteOrderService
+    deleteOrderService,
+    updateOrderPaymentService
 } from "../services/order_service.js";
 
 
@@ -86,5 +87,13 @@ export const deleteOrderController = asyncWrapper(
         const { orderId } = req.params;
         const result = await deleteOrderService(orderId);
         return res.json(result);
+    }
+);
+
+export const updateOrderPaymentController = asyncWrapper(
+    async (req, res) => {
+        const { orderId } = req.params;
+        const updatedOrder = await updateOrderPaymentService(orderId, req.body);
+        return res.json(updatedOrder);
     }
 );
