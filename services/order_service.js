@@ -347,7 +347,7 @@ export const getAllOrdersService = async (queryParams) => new Promise(
                     }
                 },
                 orderBy: {
-                    created_at: -1
+                    created_at: 'desc'
                 }
             })
             return resolve(orders)

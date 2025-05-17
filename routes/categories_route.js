@@ -10,7 +10,6 @@ import {
     updateCategoryStatusController
 } from "../controllers/category_controller.js";
 import { createMulterStorage } from "../lib/multer_storage.js";
-import { authenticateOwner } from "../middlewares/shop_auth_middleware.js";
 
 const router = express.Router();
 const categoryImageUpload = createMulterStorage('categories', 'images').single('image');
