@@ -1,138 +1,20 @@
-model product_modifier_groups {
-  id                Int             @id @default(autoincrement())
-  product_id        Int
-  group_id          Int
-  
-  // Relations
-  product           products        @relation(fields: [product_id], references: [id])
-  group             modifier_groups @relation(fields: [group_id], references: [id])
-  
-  // Configuration
-  is_required       Boolean         @default(false)
-  min_selections    Int             @default(1)
-  max_selections    Int             @default(1)
-  sort_order        Int             @default(0)
-  
-  @@unique([product_id, group_id])
-}
-
-model modifier_groups {
-  id                Int             @id @default(autoincrement())
-  name              String
-  description       String?
-  display_type      ModifierDisplayType @default(radio) // radio, checkbox, dropdown
-  
-  // Relations
-  modifiers         modifiers[]
-  product_links     product_modifier_groups[]
-  
-  created_at        DateTime        @default(now())
-  updated_at        DateTime        @updatedAt
-}
-
 model modifiers {
-  id                Int             @id @default(autoincrement())
-  group_id          Int
-  name              String
-  description       String?
-  price_adjustment  Float           @default(0)
-  is_default        Boolean         @default(false)
-  sort_order        Int             @default(0)
-  
-  // Inventory tracking
-  sku               String?
-  stock_quantity    Int?
-  is_active         Boolean         @default(true)
-  
-  // Relations
-  group             modifier_groups @relation(fields: [group_id], references: [id])
-  
-  created_at        DateTime        @default(now())
-  updated_at        DateTime        @updatedAt
+  id Int @id @default(autoincrement())
+  product_id Int
+  product products @relation(fields: [product_id], references: [id])
 
-  order_item_modifiers order_item_modifiers[]
+  name String
+  price_adjustment Float?
+  created_at DateTime @default(now())
 }
 
-model product_addon_groups {
-  id                Int             @id @default(autoincrement())
-  product_id        Int
-  group_id          Int
-  
-  // Relations
-  product           products        @relation(fields: [product_id], references: [id])
-  group             addon_groups    @relation(fields: [group_id], references: [id])
-  
-  // Configuration
-  sort_order        Int             @default(0)
-  
-  @@unique([product_id, group_id])
-}
-
-model addon_groups {
-  id                Int             @id @default(autoincrement())
-  name              String
-  description       String?
-  
-  // Relations
-  addons            addons[]
-  product_links     product_addon_groups[]
-  
-  created_at        DateTime        @default(now())
-  updated_at        DateTime        @updatedAt
-}
-
-model addons {
-  id                Int             @id @default(autoincrement())
-  group_id          Int
-  name              String
-  description       String?
-  price             Float           @default(0)
-  sort_order        Int             @default(0)
-  
-  // Inventory tracking
-  sku               String?
-  stock_quantity    Int?
-  is_active         Boolean         @default(true)
-  
-  // Relations
-  group             addon_groups    @relation(fields: [group_id], references: [id])
-  
-  created_at        DateTime        @default(now())
-  updated_at        DateTime        @updatedAt
-
-  order_item_addons order_item_addons[]
-}
-
-// Enum Types
-enum ModifierDisplayType {
-  radio      // Single selection (default)
-  checkbox   // Multiple selections
-  dropdown   // Select box
-  quantity   // Numeric quantity selector
-}
 
 model order_item_modifiers {
   id                Int             @id @default(autoincrement())
-  order_item_id     Int
-  modifier_id       Int
   price_adjustment  Float           @default(0)
   
-  // Relations
-  order_item        order_items     @relation(fields: [order_item_id], references: [id])
-  modifier          modifiers       @relation(fields: [modifier_id], references: [id])
-  
   created_at        DateTime        @default(now())
-}
 
-model order_item_addons {
-  id                Int             @id @default(autoincrement())
-  order_item_id     Int
-  addon_id          Int
-  price             Float           @default(0)
-  
-  // Relations
-  order_item        order_items     @relation(fields: [order_item_id], references: [id])
-  addon             addons          @relation(fields: [addon_id], references: [id])
-  
-  created_at        DateTime        @default(now())
+  order_item_id Int
+  order_item order_items @relation(fields: [order_item_id], references: [id])
 }

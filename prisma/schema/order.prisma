@@ -91,7 +91,6 @@ model order_items {
 
   order_item_modifiers order_item_modifiers[]
 
-  order_item_addons order_item_addons[]
 }
 
 enum order_status {

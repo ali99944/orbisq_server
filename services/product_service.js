@@ -120,8 +120,23 @@ export const createProductService = async (productData, file, shop_id) => new Pr
                 low_stock_threshold: productData.low_stock_threshold ? parseInt(productData.low_stock_threshold) : 5,
                 sort_order: productData.sort_order ? parseInt(productData.sort_order) : 0,
                 
-                has_variants: productData.has_variants !== undefined ? Boolean(JSON.parse(productData.has_variants)) : false,
             };
+
+            console.log(productData.modifiers);
+            
+            // Create product-modifier relationships
+            if (productData.modifiers) {
+                const parsedModifiers = JSON.parse(productData.modifiers);
+                if (Array.isArray(parsedModifiers)) {
+                    // Add to dataToCreate for creating product-modifier relationships
+                    dataToCreate.modifiers = {
+                        create: parsedModifiers.map(modifier => ({
+                            name: modifier.name,
+                            price_adjustment: parseFloatOrNull(modifier.price_adjustment)
+                        }))
+                    };
+                }
+            }
 
             if (file) {
                 await Validator.requiredSingleImage(file); // Validates if 'image' fieldname
@@ -153,7 +168,8 @@ export const getAllProductsService = async (queryParams, portal) => new Promise(
                     shop_id: +portal.shopId
                 },
                 include: {
-                    product_category: true
+                    product_category: true,
+                    modifiers: true
                 }
             })
             return resolve(products);
@@ -278,14 +294,17 @@ export const updateProductService = async (productId, updateData, file) => new P
                 await Validator.isNumber(parseFloat(updateData.price));
                 dataToUpdate.price = parseFloatOrNull(updateData.price);
             }
+
             if (updateData.cost_price !== undefined) {
                 await Validator.isNumber(parseFloat(updateData.cost_price));
                 dataToUpdate.cost_price = parseFloatOrNull(updateData.cost_price);
             }
+
             if (updateData.stock !== undefined) {
                 await Validator.isNumber(parseInt(updateData.stock));
                 dataToUpdate.stock = parseIntOrNull(updateData.stock);
             }
+
             if (updateData.shop_id !== undefined) { // if you allow changing shop
                 await Validator.isNumber(parseInt(updateData.shop_id));
                 const shopExists = await prisma.shops.findUnique({ where: { id: parseInt(updateData.shop_id) } });
@@ -319,9 +338,28 @@ export const updateProductService = async (productId, updateData, file) => new P
                 await Validator.isEnum(updateData.pricing_type, ['fixed', 'dynamic']);
                 dataToUpdate.pricing_type = updateData.pricing_type;
             }
+
+            if(updateData.modifiers) {
+                const parsedModifiers = JSON.parse(updateData.modifiers);
+                if(Array.isArray(parsedModifiers)) {
+                    dataToUpdate.modifiers = {
+                        deleteMany: {
+                            product_id: parseInt(productId)
+                        },
+                        create: parsedModifiers.map(modifier => ({
+                            name: modifier.name,
+                            price_adjustment: parseFloatOrNull(modifier.price_adjustment)
+                        }))
+                    };
+                }
+            }
             // ... and so on for enums
 
             if (file) {
+                console.log('yes file got it');
+                console.log(file.path);
+                
+                
                 await Validator.requiredSingleImage(file);
                 dataToUpdate.image = file.path;
             }

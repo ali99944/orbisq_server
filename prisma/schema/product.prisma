@@ -40,11 +40,7 @@ model products {
   low_stock_threshold     Int?      @default(5) // NEW: For inventory alerts
   sort_order              Int       @default(0)
   
-  // NEW: Product variants
-  has_variants           Boolean   @default(false)
-  // Relations
-  modifier_groups   product_modifier_groups[]
-  addon_groups      product_addon_groups[]
+  modifiers modifiers[]
   
   shop_id                Int?
   shop                   shops?    @relation(fields: [shop_id], references: [id])
