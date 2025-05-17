@@ -247,7 +247,7 @@ export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateDat
                         total_price,
                         status: itemInput.status || 'pending',
                         order_item_modifiers: {
-                            create: modifiers.map(mod => ({
+                            create: itemInput.modifiers.map(mod => ({
                                 name: mod.name,
                                 price_adjustment: mod.price_adjustment
                             }))
