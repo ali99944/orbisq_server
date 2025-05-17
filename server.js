@@ -85,7 +85,8 @@ const main = async () => {
             (await import('./routes/order_route.js')).default,
             (await import('./routes/coupon_route.js')).default,
             (await import('./routes/desk_route.js')).default,
-            (await import('./routes/branch_route.js')).default
+            (await import('./routes/branch_route.js')).default,
+            (await import('./routes/dashboard_route.js')).default
         )
 
         app.get('*', (req ,res) => {

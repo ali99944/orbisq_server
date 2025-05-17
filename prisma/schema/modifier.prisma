@@ -103,6 +103,14 @@ model addons {
   order_item_addons order_item_addons[]
 }
 
+// Enum Types
+enum ModifierDisplayType {
+  radio      // Single selection (default)
+  checkbox   // Multiple selections
+  dropdown   // Select box
+  quantity   // Numeric quantity selector
+}
+
 model order_item_modifiers {
   id                Int             @id @default(autoincrement())
   order_item_id     Int
@@ -127,12 +135,4 @@ model order_item_addons {
   addon             addons          @relation(fields: [addon_id], references: [id])
   
   created_at        DateTime        @default(now())
-}
-
-// Enum Types
-enum ModifierDisplayType {
-  radio      // Single selection (default)
-  checkbox   // Multiple selections
-  dropdown   // Select box
-  quantity   // Numeric quantity selector
 }

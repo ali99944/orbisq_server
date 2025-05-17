@@ -345,6 +345,9 @@ export const getAllOrdersService = async (queryParams) => new Promise(
                             currency_info: true
                         }
                     }
+                },
+                orderBy: {
+                    created_at: -1
                 }
             })
             return resolve(orders)
