@@ -339,7 +339,11 @@ export const getAllOrdersService = async (queryParams) => new Promise(
 
             const orders = await prisma.orders.findMany({
                 include: {
-                    order_items: true,
+                    order_items: {
+                        include: {
+                            product: true
+                        }
+                    },
                     shop: {
                         include: {
                             currency_info: true
