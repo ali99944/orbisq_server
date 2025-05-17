@@ -1,5 +1,6 @@
 import { CREATED, OK } from "../lib/status_codes.js";
 import asyncWrapper from "../lib/wrappers/async_wrapper.js";
+import { io } from "../server.js";
 import {
     createOrderService,
     getAllOrdersService,
@@ -12,12 +13,14 @@ import {
     deleteOrderService,
     updateOrderPaymentService
 } from "../services/order_service.js";
+import { SOCKET_EVENTS } from "../utils/socket_constants.js";
 
 
 export const createOrderController = asyncWrapper(
     async (req, res) => {
         const { items, ...orderData } = req.body; // Separate items from other order data
         const order = await createOrderService(orderData, items);
+        io.emit(SOCKET_EVENTS.ORDER_CREATED)
         return res.status(CREATED).json(order);
     }
 );
@@ -53,6 +56,7 @@ export const updateOrderStatusController = asyncWrapper(
         const { orderId } = req.params;
         const { status, ...details } = req.body; // status and other details like cancellation_reason
         const updatedOrder = await updateOrderStatusService(orderId, status, details);
+        io.emit(SOCKET_EVENTS.ORDER_UPDATED)
         return res.json(updatedOrder);
     }
 );

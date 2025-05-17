@@ -10,6 +10,7 @@ export const SOCKET_EVENTS = {
   DISCONNECT: 'disconnect',
   CONNECT_ERROR: 'connect_error',
   ORDER_CREATED: 'order_created',
+  ORDER_UPDATED: 'order_updated',
 };
 
 // Socket options
