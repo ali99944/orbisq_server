@@ -1,6 +1,5 @@
 import { CREATED, OK } from "../lib/status_codes.js";
 import asyncWrapper from "../lib/wrappers/async_wrapper.js";
-import { io } from "../server.js";
 import {
     createOrderService,
     getAllOrdersService,
@@ -11,7 +10,8 @@ import {
     updateOrderItemService,
     removeOrderItemService,
     deleteOrderService,
-    updateOrderPaymentService
+    updateOrderPaymentService,
+    getOrdersByPhoneService
 } from "../services/order_service.js";
 import { SOCKET_EVENTS } from "../utils/socket_constants.js";
 
@@ -99,5 +99,13 @@ export const updateOrderPaymentController = asyncWrapper(
         const { orderId } = req.params;
         const updatedOrder = await updateOrderPaymentService(orderId, req.body);
         return res.json(updatedOrder);
+    }
+);
+
+export const getOrdersByPhoneController = asyncWrapper(
+    async (req, res) => {
+        const { phoneNumber } = req.params;
+        const orders = await getOrdersByPhoneService(phoneNumber);
+        return res.json(orders);
     }
 );

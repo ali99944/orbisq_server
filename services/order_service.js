@@ -386,6 +386,47 @@ export const getOrderByIdService = async (orderId) => new Promise(
     })
 );
 
+export const getOrdersByPhoneService = async (phoneNumber) => new Promise(
+    promiseAsyncWrapper(async (resolve, reject) => {
+        try {
+            await Validator.isText(phoneNumber);
+            
+            // Find orders by customer phone number
+            // This checks both the main customer_phone field and the takeaway_customer_phone field
+            const orders = await prisma.orders.findMany({
+                where: {
+                    OR: [
+                        { customer_phone: phoneNumber },
+                        { takeaway_customer_phone: phoneNumber },
+                        { delivery_customer_phone: phoneNumber }
+                    ]
+                },
+                include: {
+                    order_items: {
+                        include: {
+                            product: true
+                        }
+                    },
+                    shop: {
+                        include: {
+                            currency_info: true
+                        }
+                    }
+                },
+                orderBy: {
+                    created_at: 'desc'
+                }
+            });
+            
+            return resolve(orders);
+        } catch (error) {
+            if (error instanceof CustomError) return reject(error);
+            console.error("Error in getOrdersByPhoneService:", error);
+            return reject(new CustomError("Failed to retrieve orders by phone number.", INTERNAL_SERVER));
+        }
+    })
+);
+
 export const updateOrderStatusService = async (orderId, newStatus, details = {}) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         // details can include cancellation_reason, staff_id, etc.

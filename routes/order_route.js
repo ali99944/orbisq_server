@@ -9,7 +9,8 @@ import {
     updateOrderItemController,
     removeOrderItemController,
     deleteOrderController,
-    updateOrderPaymentController
+    updateOrderPaymentController,
+    getOrdersByPhoneController
 } from "../controllers/order_controller.js";
 
 const router = express.Router();
@@ -18,6 +19,7 @@ const router = express.Router();
 router.post('/orders', createOrderController);
 router.get('/orders', getAllOrdersController);
 router.get('/orders/:orderId', getOrderByIdController);
+router.get('/orders/phone/:phoneNumber', getOrdersByPhoneController);
 router.put('/orders/:orderId/status', updateOrderStatusController); // Specific for status
 router.put('/orders/:orderId/payment', updateOrderPaymentController); // Specific for payment status
 router.put('/orders/:orderId', updateOrderGeneralInfoController); // For other fields
