@@ -54,7 +54,7 @@ const calculateOrderTotals = (items, taxAmount = 0, discountAmount = 0, serviceC
 
 export const createOrderService = async (orderInput, itemsInput) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
-        const { shop_id, order_type, desk_number, modifiers = [] } = orderInput;
+        const { shop_id, order_type, desk_number } = orderInput;
 
         try {
             // --- Basic Validations ---
@@ -151,7 +151,7 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                     const total_price = unit_price * +quantity;
                     runningSubtotal = runningSubtotal + total_price;
 
-                    const modifiers = itemInput.modifiers
+                    const modifiers = itemInput.modifiers ?? []
 
                     const itemData = {
                         order_id: createdOrder.id, // CRITICAL: Assumes order_id is String
@@ -238,6 +238,7 @@ export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateDat
                     const unit_price = new Prisma.Decimal(product.price);
                     const total_price = unit_price.mul(new Prisma.Decimal(quantity));
                     
+                    const modifiers = itemInput.modifiers ?? []
                     const newItemData = {
                         order_id: +orderId,
                         product_id: productId,
@@ -246,7 +247,7 @@ export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateDat
                         total_price,
                         status: itemInput.status || 'pending',
                         order_item_modifiers: {
-                            create: itemInput.modifiers.map(mod => ({
+                            create: modifiers.map(mod => ({
                                 name: mod.name,
                                 price_adjustment: mod.price_adjustment
                             }))
