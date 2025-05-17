@@ -34,7 +34,7 @@ model orders {
   total             Float       @default(0)
   
   // Payment information
-  payment_status    payment_status @default(unpaid)
+  // payment_status    payment_status @default(unpaid)
   payment_method    payment_method?
   transaction_id    String?     // NEW: Payment processor reference
   paid_at           DateTime?   // NEW
@@ -101,6 +101,7 @@ enum order_status {
   served // For dine-in
   completed // Generic completion, can be after served/delivered/picked_up
   cancelled
+  paid
 }
 
 enum item_status {
@@ -111,13 +112,13 @@ enum item_status {
   cancelled
 }
 
-enum payment_status {
-  unpaid
-  partially_paid
-  paid
-  refunded
-  failed
-}
+// enum payment_status {
+//   unpaid
+//   partially_paid
+//   paid
+//   refunded
+//   failed
+// }
 
 enum payment_method {
   cash
