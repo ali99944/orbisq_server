@@ -5,7 +5,7 @@ import CustomError from '../utils/custom_error.js';
 import Validator from '../lib/validator.js';
 import promiseAsyncWrapper from '../lib/wrappers/promise_async_wrapper.js';
 
-export const createCategory = async (categoryData, imagePath) => new Promise(
+export const createCategory = async (categoryData, imagePath, shop_id) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         // Validate required fields
         await Validator.validateNotNull({
@@ -44,7 +44,7 @@ export const createCategory = async (categoryData, imagePath) => new Promise(
                 is_active: !!+categoryData.is_active || false,
                 sort_order: categoryData.sort_order || 0,
                 slug: categoryData.slug,
-                shop_id: +categoryData.shop_id
+                shop_id: shop_id
             }
         });
 

@@ -15,7 +15,8 @@ export const createCategoryController = asyncWrapper(
     async (req, res) => {
         const categoryData = req.body;
         const imagePath = req.file?.path;
-        const category = await createCategory(categoryData, imagePath);
+        const shop_id = +req.portal.shopId
+        const category = await createCategory(categoryData, imagePath, shop_id);
         return res.status(201).json(category);
     }
 );
