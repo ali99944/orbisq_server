@@ -280,7 +280,7 @@ export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateDat
                 const updatedOrder = await tx.orders.update({
                     where: { id: orderId },
                     data: updatePayload,
-                    include: { items: true, shop: true, customer: true, desk: true }
+                    include: { order_items: true, shop: true }
                 });
                 return updatedOrder;
             });
