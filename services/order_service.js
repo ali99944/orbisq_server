@@ -225,7 +225,7 @@ export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateDat
             }
 
             const resultOrder = await prisma.$transaction(async (tx) => {
-                let currentItems = [...existingOrder.items]; // Current items in the order
+                let currentItems = [...existingOrder.order_items]; // Current items in the order
 
                 for (const itemInput of itemsInput) {
                     await Validator.validateNotNull({ product_id: itemInput.product_id, quantity: itemInput.quantity });
