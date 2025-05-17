@@ -22,7 +22,7 @@ export const createOrderController = asyncWrapper(
     async (req, res) => {
         const { items, ...orderData } = req.body; // Separate items from other order data
         const order = await createOrderService(orderData, items);
-        io.emit(SOCKET_EVENTS.ORDER_CREATED)
+        io.emit(SOCKET_EVENTS.ORDER_CREATED, order)
         return res.status(CREATED).json(order);
     }
 );
