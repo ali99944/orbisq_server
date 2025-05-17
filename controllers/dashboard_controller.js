@@ -53,6 +53,9 @@ export const getTopCategoriesController = asyncWrapper(
             limit: limit ? parseInt(limit) : 5,
             shop_id: shopId
         });
+
+        console.log(topCategories);
+        
         
         return res.json(topCategories);
     }

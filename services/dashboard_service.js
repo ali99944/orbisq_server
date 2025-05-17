@@ -16,23 +16,35 @@ const getDateRange = (timeframe, startDate, endDate) => {
         if (!start || !end) {
             throw new CustomError('Invalid date format for start_date or end_date', BAD_REQUEST);
         }
+        // For custom date range, set end date to end of day
+        end.setHours(23, 59, 59, 999);
     } else {
         // Predefined timeframes
-        end = new Date(now);
         switch (timeframe) {
             case 'today':
-                start = new Date(now.setHours(0, 0, 0, 0));
+                start = new Date(now);
+                start.setHours(0, 0, 0, 0);
+                end = new Date(now);
+                end.setHours(23, 59, 59, 999);
                 break;
             case 'this_week':
                 start = new Date(now);
                 start.setDate(now.getDate() - now.getDay()); // Start of week (Sunday)
                 start.setHours(0, 0, 0, 0);
+                end = new Date(now);
+                end.setHours(23, 59, 59, 999);
                 break;
             case 'this_month':
                 start = new Date(now.getFullYear(), now.getMonth(), 1);
+                start.setHours(0, 0, 0, 0);
+                end = new Date(now);
+                end.setHours(23, 59, 59, 999);
                 break;
             case 'this_year':
                 start = new Date(now.getFullYear(), 0, 1);
+                start.setHours(0, 0, 0, 0);
+                end = new Date(now);
+                end.setHours(23, 59, 59, 999);
                 break;
             case 'custom_period':
                 throw new CustomError('For custom_period, both start_date and end_date are required', BAD_REQUEST);
@@ -40,6 +52,9 @@ const getDateRange = (timeframe, startDate, endDate) => {
                 // Default to last 30 days if no valid timeframe
                 start = new Date(now);
                 start.setDate(now.getDate() - 30);
+                start.setHours(0, 0, 0, 0);
+                end = new Date(now);
+                end.setHours(23, 59, 59, 999);
         }
     }
 
@@ -69,18 +84,38 @@ export const getDashboardOverviewService = async (params) => new Promise(
             // Get date range based on timeframe
             const { start, end } = getDateRange(timeframe, start_date, end_date);
 
-            // Get orders within the date range
+            // Get orders within the date range, excluding rejected orders
             const orders = await prisma.orders.findMany({
                 where: {
                     shop_id: shopId,
                     created_at: {
                         gte: start,
-                        lte: end
+                        lte: end,
+                    },
+                    status: {
+                        not: 'cancelled'
                     }
                 }
             });
 
-            // Calculate metrics
+            // Get all orders including rejected for status-based metrics
+            const allOrders = await prisma.orders.findMany({
+                where: {
+                    shop_id: shopId,
+                    created_at: {
+                        gte: start,
+                        lte: end,
+                    }
+                }
+            });
+
+            // Calculate status-based metrics
+            const totalRejectedOrders = allOrders.filter(order => order.status === 'cancelled').length;
+            const totalCompletedOrders = allOrders.filter(order => order.status === 'completed').length;
+            const totalPendingOrders = allOrders.filter(order => order.status === 'pending').length;
+            const totalInProgressOrders = allOrders.filter(order => order.status === 'in_progress').length;
+
+            // Calculate metrics (excluding rejected orders)
             const totalOrders = orders.length;
             const totalSales = orders.reduce((sum, order) => sum + Number(order.total || 0), 0);
             
@@ -108,9 +143,27 @@ export const getDashboardOverviewService = async (params) => new Promise(
                     created_at: {
                         gte: prevStart,
                         lte: prevEnd
+                    },
+                    status: {
+                        not: 'cancelled'
                     }
                 }
             });
+
+            // Get all previous orders including rejected for status-based metrics
+            const allPrevOrders = await prisma.orders.findMany({
+                where: {
+                    shop_id: shopId,
+                    created_at: {
+                        gte: prevStart,
+                        lte: prevEnd
+                    }
+                }
+            });
+
+            // Calculate previous period status-based metrics
+            const prevTotalRejectedOrders = allPrevOrders.filter(order => order.status === 'cancelled').length;
+            const prevTotalCompletedOrders = allPrevOrders.filter(order => order.status === 'completed').length;
 
             const prevTotalOrders = prevOrders.length;
             const prevTotalSales = prevOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
@@ -120,6 +173,10 @@ export const getDashboardOverviewService = async (params) => new Promise(
             const salesChange = prevTotalSales > 0 ? ((totalSales - prevTotalSales) / prevTotalSales) * 100 : 0;
             const avgOrderChange = prevTotalOrders > 0 ? 
                 (((totalSales / totalOrders) - (prevTotalSales / prevTotalOrders)) / (prevTotalSales / prevTotalOrders)) * 100 : 0;
+            const rejectedOrdersChange = prevTotalRejectedOrders > 0 ? 
+                ((totalRejectedOrders - prevTotalRejectedOrders) / prevTotalRejectedOrders) * 100 : 0;
+            const completedOrdersChange = prevTotalCompletedOrders > 0 ? 
+                ((totalCompletedOrders - prevTotalCompletedOrders) / prevTotalCompletedOrders) * 100 : 0;
 
             // Format the response
             const result = {
@@ -140,6 +197,22 @@ export const getDashboardOverviewService = async (params) => new Promise(
                     value: totalSales,
                     currency: shop.currency_info?.currency_code || 'EGP',
                     change_percentage: salesChange
+                },
+                order_status_trends: {
+                    total_rejected_orders: {
+                        count: totalRejectedOrders,
+                        change_percentage: rejectedOrdersChange
+                    },
+                    total_completed_orders: {
+                        count: totalCompletedOrders,
+                        change_percentage: completedOrdersChange
+                    },
+                    total_pending_orders: {
+                        count: totalPendingOrders
+                    },
+                    total_in_progress_orders: {
+                        count: totalInProgressOrders
+                    }
                 },
                 timeframe: {
                     start: start.toISOString(),
@@ -177,7 +250,7 @@ export const getTopDishesService = async (params) => new Promise(
             // Get date range based on timeframe
             const { start, end } = getDateRange(timeframe, start_date, end_date);
 
-            // Get top dishes by order count
+            // Get top dishes by order count, excluding rejected orders
             const topDishes = await prisma.order_items.findMany({
                 where: {
                     order: {
@@ -185,6 +258,9 @@ export const getTopDishesService = async (params) => new Promise(
                         created_at: {
                             gte: start,
                             lte: end
+                        },
+                        status: {
+                            not: 'cancelled'
                         }
                     }
                 },
@@ -264,7 +340,7 @@ export const getTopCategoriesService = async (params) => new Promise(
             // Get date range based on timeframe
             const { start, end } = getDateRange(timeframe, start_date, end_date);
 
-            // Get categories with their products that were ordered
+            // Get categories with their products that were ordered, excluding rejected orders
             const orderItems = await prisma.order_items.findMany({
                 where: {
                     order: {
@@ -272,6 +348,9 @@ export const getTopCategoriesService = async (params) => new Promise(
                         created_at: {
                             gte: start,
                             lte: end
+                        },
+                        status: {
+                            not: 'cancelled'
                         }
                     }
                 },
@@ -288,13 +367,13 @@ export const getTopCategoriesService = async (params) => new Promise(
             const categoryMap = new Map();
             
             orderItems.forEach(item => {
-                if (!item.product?.category) return;
+                if (!item.product?.product_category) return;
                 
-                const categoryId = item.product.category.id;
+                const categoryId = item.product.product_category.id;
                 if (!categoryMap.has(categoryId)) {
                     categoryMap.set(categoryId, {
                         category_id: categoryId,
-                        name: item.product.category.name || 'Uncategorized',
+                        name: item.product.product_category.name || 'Uncategorized',
                         order_count: 0,
                         total_quantity: 0,
                         total_revenue: 0
