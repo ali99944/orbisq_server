@@ -29,18 +29,6 @@ export const createCategory = async (categoryData, imagePath) => new Promise(
                 .replace(/[^\w-]+/g, '');
         }
 
-        // Check if slug already exists in this shop
-        const existingCategory = await prisma.product_categories.findFirst({
-            where: {
-                slug: categoryData.slug,
-                shop_id: +categoryData.shop_id
-            }
-        });
-
-        if (existingCategory) {
-            throw new CustomError('Category with this slug already exists in this shop', BAD_REQUEST);
-        }
-
         // Generate reference code if not provided
         if (!categoryData.reference_code) {
             categoryData.reference_code = generateReferenceCode('CAT');
