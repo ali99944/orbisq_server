@@ -152,14 +152,20 @@ export const createOrderService = async (orderInput, itemsInput) => new Promise(
                     const total_price = unit_price * +quantity;
                     runningSubtotal = runningSubtotal + total_price;
 
+                    const modifiers = itemInput.modifiers
+
                     const itemData = {
                         order_id: createdOrder.id, // CRITICAL: Assumes order_id is String
                         product_id: productId,
                         quantity,
                         unit_price,
                         total_price,
-                        special_requests: itemInput.special_requests || null,
-                        variant_options: itemInput.variant_options || Prisma.JsonNull, // Or handle JSON properly
+                        order_item_modifiers: {
+                            create: modifiers.map(mod => ({
+                                name: mod.name,
+                                price_adjustment: mod.price_adjustment
+                            }))
+                        },
                         status: itemInput.status || 'pending',
                         // applied_discount_id: itemInput.applied_discount_id ? parseInt(itemInput.applied_discount_id) : null,
                     };
@@ -239,9 +245,13 @@ export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateDat
                         quantity,
                         unit_price,
                         total_price,
-                        special_requests: itemInput.special_requests || null,
-                        variant_options: itemInput.variant_options || Prisma.JsonNull,
                         status: itemInput.status || 'pending',
+                        order_item_modifiers: {
+                            create: modifiers.map(mod => ({
+                                name: mod.name,
+                                price_adjustment: mod.price_adjustment
+                            }))
+                        },
                     };
                     const createdItem = await tx.order_items.create({ data: newItemData });
                     currentItems.push(createdItem); // Add to the list for total calculation
