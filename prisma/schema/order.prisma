@@ -99,11 +99,8 @@ enum order_status {
   preparing
   ready // For pickup or out for delivery
   served // For dine-in
-  out_for_delivery // New for delivery
-  delivered // New for delivery
   completed // Generic completion, can be after served/delivered/picked_up
   cancelled
-  refunded
 }
 
 enum item_status {

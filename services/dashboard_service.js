@@ -113,7 +113,7 @@ export const getDashboardOverviewService = async (params) => new Promise(
             const totalRejectedOrders = allOrders.filter(order => order.status === 'cancelled').length;
             const totalCompletedOrders = allOrders.filter(order => order.status === 'completed').length;
             const totalPendingOrders = allOrders.filter(order => order.status === 'pending').length;
-            const totalInProgressOrders = allOrders.filter(order => order.status === 'in_progress').length;
+            const totalPreparingOrders = allOrders.filter(order => order.status === 'preparing').length;
 
             // Calculate metrics (excluding rejected orders)
             const totalOrders = orders.length;
@@ -210,8 +210,8 @@ export const getDashboardOverviewService = async (params) => new Promise(
                     total_pending_orders: {
                         count: totalPendingOrders
                     },
-                    total_in_progress_orders: {
-                        count: totalInProgressOrders
+                    total_preparing_orders: {
+                        count: totalPreparingOrders
                     }
                 },
                 timeframe: {
