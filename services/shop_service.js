@@ -218,7 +218,8 @@ export const getShopById = async (shopId) => new Promise(
                 categories: true,
                 products: {
                     include: {
-                        product_category: true
+                        product_category: true,
+                        modifiers: true
                     }
                 },
                 discounts: true,

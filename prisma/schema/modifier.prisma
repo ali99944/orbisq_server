@@ -11,7 +11,8 @@ model modifiers {
 
 model order_item_modifiers {
   id                Int             @id @default(autoincrement())
-  price_adjustment  Float           @default(0)
+  name String
+  price_adjustment  Float?
   
   created_at        DateTime        @default(now())
 
