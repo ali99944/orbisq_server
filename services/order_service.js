@@ -350,7 +350,8 @@ export const getAllOrdersService = async (queryParams) => new Promise(
                 include: {
                     order_items: {
                         include: {
-                            product: true
+                            product: true,
+                            order_item_modifiers: true
                         }
                     },
                     shop: {
