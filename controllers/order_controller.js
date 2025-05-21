@@ -29,7 +29,8 @@ export const createOrderController = asyncWrapper(
 
 export const getAllOrdersController = asyncWrapper(
     async (req, res) => {
-        const orders = await getAllOrdersService(req.query);
+        const shop_id = req.portal.shopId
+        const orders = await getAllOrdersService(req.query, +shop_id);
         return res.json(orders);
     }
 );
@@ -48,6 +49,7 @@ export const addItemsToOrderController = asyncWrapper(
         const { orderId } = req.params;
         const { items, ...orderUpdateData } = req.body; // items to add, and potentially other order fields to update
         const updatedOrder = await addItemsToOrderService(orderId, items, orderUpdateData);
+        io.emit(SOCKET_EVENTS.ORDER_UPDATED, updatedOrder)
         return res.status(OK).json(updatedOrder);
     }
 );

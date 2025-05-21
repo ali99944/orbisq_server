@@ -12,12 +12,13 @@ import {
     updateOrderPaymentController,
     getOrdersByPhoneController
 } from "../controllers/order_controller.js";
+import { authenticatePortal } from "../middlewares/shop_auth_middleware.js";
 
 const router = express.Router();
 
 // Order level routes
 router.post('/orders', createOrderController);
-router.get('/orders', getAllOrdersController);
+router.get('/orders', authenticatePortal, getAllOrdersController);
 router.get('/orders/:orderId', getOrderByIdController);
 router.get('/orders/phone/:phoneNumber', getOrdersByPhoneController);
 router.put('/orders/:orderId/status', updateOrderStatusController); // Specific for status

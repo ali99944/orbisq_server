@@ -295,7 +295,7 @@ export const addItemsToOrderService = async (orderId, itemsInput, orderUpdateDat
 );
 
 
-export const getAllOrdersService = async (queryParams) => new Promise(
+export const getAllOrdersService = async (queryParams, shop_id) => new Promise(
     promiseAsyncWrapper(async (resolve, reject) => {
         try {
             // const {
@@ -347,6 +347,9 @@ export const getAllOrdersService = async (queryParams) => new Promise(
             // });
 
             const orders = await prisma.orders.findMany({
+                where: {
+                    shop_id: shop_id
+                },
                 include: {
                     order_items: {
                         include: {
