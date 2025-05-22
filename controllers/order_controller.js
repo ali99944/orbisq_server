@@ -54,13 +54,30 @@ export const addItemsToOrderController = asyncWrapper(
     }
 );
 
+const getCustomerPhone = (order) => {
+    switch(order.order_type) {
+        case 'dine_in':
+            return order.customer_phone
+        case 'takeaway':
+            return order.takeaway_customer_phone
+        case 'delivery':
+            return order.delivery_customer_phone
+
+        default:
+            return null
+    }
+}
 
 export const updateOrderStatusController = asyncWrapper(
     async (req, res) => {
         const { orderId } = req.params;
         const { status, ...details } = req.body; // status and other details like cancellation_reason
         const updatedOrder = await updateOrderStatusService(orderId, status, details);
-        io.emit(SOCKET_EVENTS.ORDER_UPDATED)
+        io.emit(SOCKET_EVENTS.ORDER_UPDATED, {
+            order: updatedOrder,
+            phone_number: getCustomerPhone(updatedOrder),
+            shop_id: updatedOrder.shop_id
+        })
         return res.json(updatedOrder);
     }
 );
